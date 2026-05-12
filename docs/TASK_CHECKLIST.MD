@@ -53,17 +53,19 @@
 
 ### PR 02 — Django project scaffold
 
-- [ ] Initialise Django project inside container
-  - [ ] `django-admin startproject pgstack .`
-  - [ ] Configure `settings.py` to read `DATABASE_URL` from env via `python-decouple`
-  - [ ] Add `django.contrib.postgres` to `INSTALLED_APPS`
-  - [ ] Set `CHANNEL_LAYERS` to `InMemoryChannelLayer` (no Redis)
-- [ ] Create `todos` app
-  - [ ] `python manage.py startapp todos`
-  - [ ] Register `todos` in `INSTALLED_APPS`
-- [ ] Set up ASGI entry point
-  - [ ] `pgstack/asgi.py` with `ProtocolTypeRouter` for `http` + `websocket`
-- [ ] Verify: `docker compose run web python manage.py check` passes
+- [x] Initialise Django project inside container
+  - [x] `django-admin startproject pgstack .` *(equivalent layout: `manage.py` + `pgstack/` package + `settings/{base,dev,prod}.py` per PROJECT_GUIDELINES)*
+  - [x] Configure settings to read `DATABASE_URL` from env via `python-decouple` (`pgstack/settings/base.py`)
+  - [x] Add `django.contrib.postgres` to `INSTALLED_APPS`
+  - [x] Set `CHANNEL_LAYERS` to `InMemoryChannelLayer` (no Redis)
+- [x] Create `todos` app
+  - [x] `python manage.py startapp todos` *(equivalent: `todos/` with `apps.py`, migrations, management commands)*
+  - [x] Register `todos` in `INSTALLED_APPS` (`todos.apps.TodosConfig`)
+- [x] Set up ASGI entry point
+  - [x] `pgstack/asgi.py` with `ProtocolTypeRouter` for `http` + `websocket`
+- [x] Verify: `python manage.py check` passes
+  - [x] **Local:** `.venv/bin/pip install -r requirements/dev.txt` then `.venv/bin/python manage.py check` with env from `.env.example` / `docker-compose.yml` — OK
+  - [x] **Container:** `docker compose run web python manage.py check`
 
 ---
 
