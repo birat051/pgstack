@@ -1,0 +1,8 @@
+# Shared dependencies — Django ASGI stack per PROJECT_PLAN / PR 01 checklist.
+Django>=5.0,<5.2
+psycopg2-binary>=2.9.9
+channels>=4.0
+daphne>=4.0
+dj-database-url>=2.1
+python-decouple>=3.8
+asyncpg>=0.29.0

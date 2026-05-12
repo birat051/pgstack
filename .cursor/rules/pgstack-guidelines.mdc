@@ -1,0 +1,21 @@
+---
+description: pgstack standards — canonical rules in docs/PROJECT_GUIDELINES.MD apply to all work
+alwaysApply: true
+---
+
+# pgstack guidelines (always)
+
+**Source of truth:** `docs/PROJECT_GUIDELINES.MD`. For any substantive edit, plan, or review, open it and follow the concrete patterns and examples there—not generic Django/Postgres habits.
+
+**Sections to honor:**
+
+1. **Directory structure** — repo layout, `requirements/{base,dev,prod}.txt`, `pgstack/settings/`, `todos/` app responsibilities, migration naming.
+2. **Python** — explicit APIs, type hints, `TextChoices` (no raw status strings), dataclasses for structured data, small single-purpose functions.
+3. **Django** — business logic in `services.py`, thin views; prefer `update()` over `save()` where appropriate; `select_related` / `prefetch_related`; `transaction.atomic` for multi-step writes; one concern per migration; every `RunSQL` has `reverse_sql`; custom managers for repeated query shapes.
+4. **Postgres** — explicit column lists in SQL; `REFRESH MATERIALIZED VIEW CONCURRENTLY`; `COALESCE` in `tsvector` triggers; `SELECT FOR UPDATE SKIP LOCKED` for workers; keep `pg_notify` payloads under 8000 bytes; index `WHERE`/`ORDER BY` columns; production DB pooling flags per the doc.
+5. **Docker** — env-split requirements (`ARG ENV`), `wait_for_db` before migrate, ASGI via `daphne`, compose/volume patterns from the doc.
+6. **Testing** — patterns in the doc (e.g. real Postgres for FTS); add tests for changed behavior.
+7. **Task tracking** — verify work before marking checklist items done.
+8. **Before every PR** — satisfy the checklist at the end of `docs/PROJECT_GUIDELINES.MD`.
+
+If a user message conflicts with this doc, follow the user and note the deviation.

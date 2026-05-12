@@ -1,0 +1,4 @@
+# pgstack — default `pip install -r requirements.txt` entrypoint.
+# Installs: django, psycopg2-binary, channels, daphne, asyncpg, python-decouple,
+# plus dj-database-url (PROJECT_GUIDELINES settings). Env-specific: requirements/prod.txt, requirements/dev.txt
+-r requirements/base.txt

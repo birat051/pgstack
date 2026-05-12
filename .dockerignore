@@ -1,0 +1,27 @@
+# VCS, bytecode — Task Checklist PR 01 (also excludes caches & tooling below)
+.git
+__pycache__
+*.pyc
+*.py[cod]
+.gitignore
+.env
+.env.*
+!.env.example
+*$py.class
+*.so
+.Python
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+*.egg-info
+.eggs
+dist
+build
+*.md
+docs
+.cursor
+.idea
+.vscode
+docker-compose.override.yml
