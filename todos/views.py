@@ -4,6 +4,15 @@ from django.shortcuts import render
 from todos import services
 
 
+def index(request: HttpRequest) -> HttpResponse:
+    todos = services.list_recent_todos()
+    return render(
+        request,
+        'todos/index.html',
+        {'todos': todos},
+    )
+
+
 def search(request: HttpRequest) -> HttpResponse:
     q = request.GET.get('q', '')
     todos = services.search_todos(q)

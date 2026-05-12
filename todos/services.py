@@ -13,6 +13,13 @@ from django.db.models.functions import Greatest
 
 from todos.models import Todo
 
+INDEX_PAGE_LIMIT = 50
+
+
+def list_recent_todos(limit: int = INDEX_PAGE_LIMIT) -> QuerySet[Todo]:
+    return Todo.objects.order_by('-created_at')[:limit]
+
+
 # pg_trgm similarity is 0–1; higher = fewer fuzzy matches (less noise).
 TRIGRAM_THRESHOLD = 0.3
 SEARCH_RESULTS_LIMIT = 50

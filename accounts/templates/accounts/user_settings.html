@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Settings — pgstack</title>
+</head>
+<body>
+    <main>
+        <h1>Todo list visibility</h1>
+        {% if messages %}
+            <ul>
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+        <form method="post" action="{% url 'settings' %}">
+            {% csrf_token %}
+            <label>
+                <input type="checkbox" name="is_todo_list_private" {% if is_todo_list_private %}checked{% endif %}>
+                Keep my Todo list private
+            </label>
+            <p><button type="submit">Save</button></p>
+        </form>
+    </main>
+</body>
+</html>
