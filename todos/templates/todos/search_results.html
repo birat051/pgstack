@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Search todos</title>
+</head>
+<body>
+    <h1>Search</h1>
+    <form method="get" action="{% url 'search' %}">
+        <label for="q">Query</label>
+        <input type="search" id="q" name="q" value="{{ q }}" autofocus>
+        <button type="submit">Search</button>
+    </form>
+
+    {% if q %}
+        {% if todos %}
+            <ul>
+                {% for todo in todos %}
+                    <li>
+                        <strong>{{ todo.title }}</strong>
+                        <div>{{ todo.headline|safe }}</div>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>No results for your search.</p>
+        {% endif %}
+    {% endif %}
+</body>
+</html>
