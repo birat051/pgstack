@@ -87,16 +87,16 @@
 
 ### PR 04 — FTS: GIN index + trigger
 
-- [ ] Write custom migration for GIN index
-  - [ ] `migrations.RunSQL` to `CREATE INDEX USING GIN` on `search_vector`
-  - [ ] Include `reverse_sql` to drop the index
-- [ ] Write Postgres trigger to auto-update `search_vector`
-  - [ ] `to_tsvector('english', coalesce(title,'') || ' ' || coalesce(notes,''))`
-  - [ ] Fires `BEFORE INSERT OR UPDATE` on `todos_todo`
-  - [ ] Apply via `RunSQL` in the same migration, with `reverse_sql` to drop
-- [ ] Test inside Docker
-  - [ ] `docker compose run web python manage.py migrate`
-  - [ ] Insert a todo via Django shell, confirm `search_vector` is populated
+- [x] Write custom migration for GIN index
+  - [x] `migrations.RunSQL` to `CREATE INDEX USING GIN` on `search_vector`
+  - [x] Include `reverse_sql` to drop the index
+- [x] Write Postgres trigger to auto-update `search_vector`
+  - [x] `to_tsvector('english', coalesce(title,'') || ' ' || coalesce(notes,''))`
+  - [x] Fires `BEFORE INSERT OR UPDATE` on `todos_todo`
+  - [x] Apply via `RunSQL` (`0004_add_search_vector_trigger`), with `reverse_sql` to drop
+- [x] Test inside Docker
+  - [x] `docker compose run web python manage.py migrate`
+  - [x] Insert a todo via Django shell, confirm `search_vector` is populated
 
 ---
 
