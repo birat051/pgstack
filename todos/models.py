@@ -1,5 +1,10 @@
 from django.contrib.postgres.search import SearchVectorField
 from django.db import models
+from django.db.models import Value
+from django.db.models.functions import Cast, Coalesce, Concat
+
+_EMPTY_TEXT = Value('', output_field=models.TextField())
+_SPACE = Value(' ', output_field=models.TextField())
 
 
 class TodoStatus(models.TextChoices):
@@ -19,6 +24,16 @@ class Todo(models.Model):
     due_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     search_vector = SearchVectorField(null=True)
+    # title + notes; extend this expression when adding searchable fields (keep trigger/SQL in sync).
+    search_document = models.GeneratedField(
+        expression=Concat(
+            Coalesce(Cast('title', models.TextField()), _EMPTY_TEXT),
+            _SPACE,
+            Coalesce(Cast('notes', models.TextField()), _EMPTY_TEXT),
+        ),
+        output_field=models.TextField(),
+        db_persist=True,
+    )
 
     class Meta:
         ordering = ['-created_at']

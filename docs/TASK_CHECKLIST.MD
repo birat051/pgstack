@@ -102,15 +102,15 @@
 
 ### PR 05 — FTS: search view + template
 
-- [ ] Search view (`todos/views.py`)
-  - [ ] `SearchQuery` + `SearchRank` + `SearchHeadline` annotations
-  - [ ] Filter by `search_vector`, order by rank descending
-  - [ ] Wire to `GET /search/` in `todos/urls.py`
-- [ ] `todos/search_results.html` template
-  - [ ] Search bar form (`method="get"`)
-  - [ ] Render `headline` with `{{ todo.headline|safe }}` for highlighted terms
-  - [ ] Empty state message when no results
-- [ ] Test: `docker compose up`, visit `/search/?q=<term>`, confirm ranked results
+- [x] Search view (`todos/views.py`)
+  - [x] `SearchQuery` + `SearchRank` + `SearchHeadline` annotations
+  - [x] Filter by `search_vector`, order by rank descending
+  - [x] Wire to `GET /search/` in `todos/urls.py`
+- [x] `todos/search_results.html` template
+  - [x] Search bar form (`method="get"`)
+  - [x] Render `headline` with `{{ todo.headline|safe }}` for highlighted terms
+  - [x] Empty state message when no results
+- [x] Test: `docker compose up`, visit `/search/?q=<term>`, confirm ranked results *(Docker test client: sample todo, `q=milk`, ranked results with `<b>` headlines)*
 
 ---
 
