@@ -6,22 +6,26 @@
 
 ## PR overview
 
-| PR    | Phase   | Description                                     |
-| ----- | ------- | ----------------------------------------------- |
-| PR 01 | Phase 1 | Docker + Compose setup                          |
-| PR 02 | Phase 1 | Django project scaffold                         |
-| PR 03 | Phase 1 | Core models + initial migration                 |
-| PR 04 | Phase 2 | FTS — GIN index + trigger                       |
-| PR 05 | Phase 2 | FTS — search view + template                    |
-| PR 06 | Phase 3 | LISTEN/NOTIFY — Postgres trigger + ASGI         |
-| PR 07 | Phase 3 | LISTEN/NOTIFY — consumer + template wiring      |
-| PR 08 | Phase 4 | Materialized view — migration + refresh trigger |
-| PR 09 | Phase 4 | Materialized view — dashboard view + template   |
-| PR 10 | Phase 5 | SKIP LOCKED — enqueue trigger                   |
-| PR 11 | Phase 5 | SKIP LOCKED — worker + management command       |
-| PR 12 | Phase 5 | SKIP LOCKED — queue monitor view + template     |
-| PR 13 | Phase 6 | MVT wiring — base template + nav + index view   |
-| PR 14 | Phase 6 | Demo polish + README                            |
+| PR     | Phase   | Description                                     |
+| ------ | ------- | ----------------------------------------------- |
+| PR 01  | Phase 1 | Docker + Compose setup                          |
+| PR 02  | Phase 1 | Django project scaffold                         |
+| PR 03  | Phase 1 | Core models + initial migration                 |
+| PR 04  | Phase 2 | FTS — GIN index + trigger                       |
+| PR 05  | Phase 2 | FTS — search view + template                    |
+| PR 06  | Phase 3 | LISTEN/NOTIFY — Postgres trigger + ASGI         |
+| PR 07  | Phase 4 | Auth — accounts app + settings schema           |
+| PR 07a | Phase 4 | Auth — signup flow (name, email, password)      |
+| PR 08  | Phase 4 | Auth — Todo ownership + write permissions       |
+| PR 09  | Phase 4 | Auth — user search + public/private Todo lists  |
+| PR 10  | Phase 5 | LISTEN/NOTIFY — consumer + template wiring      |
+| PR 11  | Phase 6 | Materialized view — migration + refresh trigger |
+| PR 12  | Phase 6 | Materialized view — dashboard view + template   |
+| PR 13  | Phase 7 | SKIP LOCKED — enqueue trigger                   |
+| PR 14  | Phase 7 | SKIP LOCKED — worker + management command       |
+| PR 15  | Phase 7 | SKIP LOCKED — queue monitor view + template     |
+| PR 16  | Phase 8 | MVT wiring — base template + nav + index view   |
+| PR 17  | Phase 8 | Demo polish + README                            |
 
 ---
 
@@ -54,12 +58,12 @@
 ### PR 02 — Django project scaffold
 
 - [x] Initialise Django project inside container
-  - [x] `django-admin startproject pgstack .` *(equivalent layout: `manage.py` + `pgstack/` package + `settings/{base,dev,prod}.py` per PROJECT_GUIDELINES)*
+  - [x] `django-admin startproject pgstack .` _(equivalent layout: `manage.py` + `pgstack/` package + `settings/{base,dev,prod}.py` per PROJECT_GUIDELINES)_
   - [x] Configure settings to read `DATABASE_URL` from env via `python-decouple` (`pgstack/settings/base.py`)
   - [x] Add `django.contrib.postgres` to `INSTALLED_APPS`
   - [x] Set `CHANNEL_LAYERS` to `InMemoryChannelLayer` (no Redis)
 - [x] Create `todos` app
-  - [x] `python manage.py startapp todos` *(equivalent: `todos/` with `apps.py`, migrations, management commands)*
+  - [x] `python manage.py startapp todos` _(equivalent: `todos/` with `apps.py`, migrations, management commands)_
   - [x] Register `todos` in `INSTALLED_APPS` (`todos.apps.TodosConfig`)
 - [x] Set up ASGI entry point
   - [x] `pgstack/asgi.py` with `ProtocolTypeRouter` for `http` + `websocket`
@@ -77,9 +81,9 @@
 - [x] Define `Job` model (`todos/models.py`)
   - [x] Fields: `todo` FK, `job_type`, `payload` JSONField, `status` (choices), `created_at`, `processed_at`
 - [x] Run and verify migration
-  - [x] `docker compose run web python manage.py makemigrations` *(no model changes; "No changes detected")*
+  - [x] `docker compose run web python manage.py makemigrations` _(no model changes; "No changes detected")_
   - [x] `docker compose run web python manage.py migrate`
-  - [x] Confirm tables exist: `docker compose exec db psql -U postgres -d pgstack -c '\dt'` *(see `todos_todo`, `todos_job`)*
+  - [x] Confirm tables exist: `docker compose exec db psql -U postgres -d pgstack -c '\dt'` _(see `todos_todo`, `todos_job`)_
 
 ---
 
@@ -110,7 +114,7 @@
   - [x] Search bar form (`method="get"`)
   - [x] Render `headline` with `{{ todo.headline|safe }}` for highlighted terms
   - [x] Empty state message when no results
-- [x] Test: `docker compose up`, visit `/search/?q=<term>`, confirm ranked results *(Docker test client: sample todo, `q=milk`, ranked results with `<b>` headlines)*
+- [x] Test: `docker compose up`, visit `/search/?q=<term>`, confirm ranked results _(Docker test client: sample todo, `q=milk`, ranked results with `<b>` headlines)_
 
 ---
 
@@ -118,19 +122,135 @@
 
 ### PR 06 — LISTEN/NOTIFY: Postgres trigger + ASGI
 
-- [ ] Write notify trigger on `todos_todo`
-  - [ ] `pg_notify('todo_updates', row_to_json(NEW)::text)`
-  - [ ] Fires `AFTER INSERT OR UPDATE`
-  - [ ] Apply via `RunSQL` migration with `reverse_sql` to drop
-- [ ] Configure Django Channels in `settings.py`
-  - [ ] `ASGI_APPLICATION = 'pgstack.asgi.application'`
-  - [ ] `CHANNEL_LAYERS` using `InMemoryChannelLayer`
-- [ ] Confirm `daphne` serves ASGI correctly in Docker
-  - [ ] `docker compose up`, check logs for daphne startup
+- [x] Write notify trigger on `todos_todo`
+  - [x] `pg_notify('todo_updates', …)` — bounded JSON payload (id, title, status, due_date, created_at, truncated `notes_preview`; fallback to id/title/status if over ~7500 bytes per `PROJECT_GUIDELINES.MD`, not raw `row_to_json(NEW)`)
+  - [x] Fires `AFTER INSERT OR UPDATE`
+  - [x] Apply via `RunSQL` migration with `reverse_sql` to drop (`0006_todo_notify_trigger`)
+- [x] Configure Django Channels _(in `pgstack/settings/base.py`; project uses split settings, not a single `settings.py`)_
+  - [x] `ASGI_APPLICATION = 'pgstack.asgi.application'`
+  - [x] `CHANNEL_LAYERS` using `InMemoryChannelLayer`
+- [x] Confirm `daphne` serves ASGI correctly in Docker
+  - [x] `docker compose run web`: start `daphne`; logs show **Listening** on TCP; `GET /admin/login/` returns **200** via ASGI _(curl not in image; verified with Python `urllib.request`)_
 
 ---
 
-### PR 07 — LISTEN/NOTIFY: consumer + template wiring
+## Phase 4 — User auth, ownership, and visibility
+
+> Execute before LISTEN/NOTIFY consumer work so Todos are user-scoped and realtime updates do not leak across users. Per `PROJECT_GUIDELINES.MD` ("one app per domain concept"), use a separate `accounts` app for user settings and user discovery; keep Todo ownership and query rules in `todos`.
+
+### PR 07 — Auth: accounts app + settings schema
+
+- [x] Create `accounts` app
+  - [x] `python manage.py startapp accounts`
+  - [x] Register `accounts.apps.AccountsConfig` in `INSTALLED_APPS`
+  - [x] Use Django's native `django.contrib.auth.models.User`; do not introduce a custom user model unless a concrete requirement appears before first production migration
+- [x] Define `UserSettings` model (`accounts/models.py`)
+  - [x] `user = OneToOneField(User, on_delete=CASCADE, related_name='settings')`
+  - [x] `is_todo_list_private = BooleanField(default=True)`
+  - [x] `created_at`, `updated_at`
+  - [x] Add indexes only for fields used in `WHERE` / `ORDER BY`
+- [x] Add focused migration for `UserSettings`
+  - [x] One concern: create settings table only
+  - [x] Verify with `docker compose run web python manage.py migrate`
+- [x] Add `accounts/services.py`
+  - [x] `get_or_create_user_settings(user: User) -> UserSettings`
+  - [x] `set_todo_list_privacy(user: User, is_private: bool) -> None` using targeted `update()` where appropriate
+  - [x] `can_view_todo_list(viewer: User | AnonymousUser, owner: User) -> bool`
+- [x] Add settings view + template
+  - [x] Authenticated users can view/update their Todo list privacy
+  - [x] Views stay thin and delegate rules to `accounts.services`
+  - [x] Wire to `GET/POST /settings/`
+- [x] Tests
+  - [x] Default privacy is private
+  - [x] Owner can view own list regardless of privacy
+  - [x] Anonymous and other users cannot view private lists
+  - [x] Public lists are visible to other users
+
+---
+
+### PR 07a — Auth: signup flow (name, email, password)
+
+Do this after PR 07 so signup can create `User` rows aligned with Django auth and optionally ensure `UserSettings` exists for new users (`get_or_create_user_settings`). Keep business logic out of views.
+
+- [x] Add a signup **form** (e.g. `accounts/forms.py`) with validated fields:
+  - [x] **Name** — map to `User.first_name` (and optionally `last_name`); document chosen mapping in code or a short comment
+  - [x] **Email** — required, uniqueness validation against existing users
+  - [x] **Password** — Django password validators (`AUTH_PASSWORD_VALIDATORS`); optionally require confirmation field for UX
+- [x] Add `accounts.services.register_user(...) -> User` (or equivalent) — create user with email + hashed password + name fields; pick a deterministic **unique `username`** strategy (e.g. from normalized email plus disambiguation on collision); call `transaction.atomic` if signup also creates profile/settings rows in the same flow
+- [x] Add signup **view + template**
+  - [x] Thin view: instantiate form, POST delegates to service, success path logs the user in and redirects (`LOGIN_REDIRECT_URL` or `next`), or redirects to login with a message — pick one behavior and document in tests
+  - [x] Wire `GET/POST` (recommended: `/auth/signup/` or `/signup/` to sit beside existing `/auth/login/`)
+  - [x] Include link from **`registration/login.html`** to signup and/or login from signup template
+- [x] Tests (`accounts/tests/`)
+  - [x] Valid submission creates user with expected email/name and redirects or logs in
+  - [x] Duplicate email yields a safe error (no user enumeration caveat optional for demo)
+  - [x] Weak password fails validation messages
+
+---
+
+### PR 08 — Auth: Todo ownership + write permissions
+
+- [ ] Add owner relationship to `Todo`
+  - [ ] `owner = ForeignKey(User, on_delete=CASCADE, related_name='todos')`
+  - [ ] Add `select_related('owner')` where owner is rendered or checked
+  - [ ] Add index for `owner` + existing list ordering (`owner`, `-created_at`) if query shape requires it
+- [ ] Add focused migration for `Todo.owner`
+  - [ ] Decide backfill for existing Todo rows before applying migration (e.g. assign to an initial admin/demo user or create a data migration)
+  - [ ] Keep schema change and data backfill separated if needed
+  - [ ] Verify with `docker compose run web python manage.py migrate`
+- [ ] Update Todo creation flow
+  - [ ] Only authenticated users can add Todo
+  - [ ] Use `@login_required` or `LoginRequiredMixin` on write views
+  - [ ] `todos.services.create_todo(...)` accepts the owner explicitly and writes it in the same create call
+  - [ ] Reject or redirect unauthenticated POSTs to login
+- [ ] Update Todo query helpers
+  - [ ] `todos.services.list_todos_for_user(user: User)` returns only the current user's Todos
+  - [ ] Todo search (`/search/?q=...`) searches the current user's Todos by default
+  - [ ] Shared visibility query shape is centralized instead of duplicated across views
+- [ ] Update downstream features that depend on Todo rows
+  - [ ] Dashboard counts are scoped to the authenticated user's Todos unless viewing another public user's list
+  - [ ] Queue monitor either remains admin/staff-only or only shows jobs for the authenticated user's Todos
+  - [ ] LISTEN/NOTIFY consumers do not leak private Todo data across users
+- [ ] Tests
+  - [ ] Anonymous users cannot create Todos
+  - [ ] Authenticated users create Todos owned by themselves
+  - [ ] User A cannot see User B's private Todos in index, search, dashboard, queue, or live updates
+  - [ ] User A can still see their own Todos
+
+---
+
+### PR 09 — Auth: user search + public/private Todo lists
+
+- [ ] User search feature (`accounts/views.py`, `accounts/services.py`)
+  - [ ] Search Django `User` by username only for now
+  - [ ] Use case-insensitive prefix/contains matching with a small limit (e.g. 20)
+  - [ ] Keep search logic in `accounts.services.search_users_by_username(query: str)`
+  - [ ] Wire to `GET /users/search/?q=<username>`
+- [ ] User search template
+  - [ ] Search bar form (`method="get"`)
+  - [ ] Render username and link to public Todo list route
+  - [ ] Empty state for no matching users
+- [ ] Public/private Todo list view
+  - [ ] Route: `GET /users/<username>/todos/`
+  - [ ] Owner always sees their own list
+  - [ ] Other authenticated users can view only if `UserSettings.is_todo_list_private = False`
+  - [ ] Anonymous users can view public lists only if product decision allows it; otherwise redirect to login before evaluating visibility
+  - [ ] Private lists return 404 or 403 consistently (choose one and test it)
+- [ ] Update Todo search behavior for viewed users
+  - [ ] Current user's `/search/` remains own-list search
+  - [ ] Optional owner-specific search (`/users/<username>/todos/?q=<term>`) respects the same privacy rules
+- [ ] Tests
+  - [ ] Username search finds expected users and limits noise
+  - [ ] Username search does not expose private Todo content
+  - [ ] Public user Todo list is visible according to the chosen anonymous/authenticated policy
+  - [ ] Private user Todo list is blocked for other users
+  - [ ] Owner-specific Todo search respects privacy
+
+---
+
+## Phase 5 — Live sync (consumer wiring)
+
+### PR 10 — LISTEN/NOTIFY: consumer + template wiring
 
 - [ ] `TodoConsumer` (`todos/consumers.py`)
   - [ ] `connect()`: accept + launch `asyncpg` LISTEN coroutine
@@ -146,9 +266,9 @@
 
 ---
 
-## Phase 4 — Dashboard cache (replaces Redis cache)
+## Phase 6 — Dashboard cache (replaces Redis cache)
 
-### PR 08 — Materialized view: migration + refresh trigger
+### PR 11 — Materialized view: migration + refresh trigger
 
 - [ ] Create `todo_stats` materialized view via `RunSQL` migration
   - [ ] `GROUP BY status`: columns `total`, `overdue_count`, `done_count`
@@ -163,7 +283,7 @@
 
 ---
 
-### PR 09 — Materialized view: dashboard view + template
+### PR 12 — Materialized view: dashboard view + template
 
 - [ ] Dashboard view (`todos/views.py`)
   - [ ] Raw query: `SELECT * FROM todo_stats`
@@ -175,9 +295,9 @@
 
 ---
 
-## Phase 5 — Job queue (replaces SQS)
+## Phase 7 — Job queue (replaces SQS)
 
-### PR 10 — SKIP LOCKED: enqueue trigger
+### PR 13 — SKIP LOCKED: enqueue trigger
 
 - [ ] Write enqueue trigger on `todos_todo` INSERT
   - [ ] `INSERT INTO todos_job` with `status='queued'`
@@ -188,7 +308,7 @@
 
 ---
 
-### PR 11 — SKIP LOCKED: worker + management command
+### PR 14 — SKIP LOCKED: worker + management command
 
 - [ ] Worker function (`todos/worker.py`)
   - [ ] `SELECT … FOR UPDATE SKIP LOCKED LIMIT 1`
@@ -206,7 +326,7 @@
 
 ---
 
-### PR 12 — SKIP LOCKED: queue monitor view + template
+### PR 15 — SKIP LOCKED: queue monitor view + template
 
 - [ ] Queue monitor view (`todos/views.py`)
   - [ ] Latest 50 jobs, `select_related('todo')`
@@ -218,37 +338,43 @@
 
 ---
 
-## Phase 6 — MVT wiring + polish
+## Phase 8 — MVT wiring + polish
 
-### PR 13 — MVT wiring: base template + nav + index view
+### PR 16 — MVT wiring: base template + nav + index view
 
 - [ ] `base.html`
-  - [ ] Nav: Todos | Search | Dashboard | Queue
+  - [ ] Nav: Todos | Search | Users | Dashboard | Queue | Settings
+  - [ ] Show Login/Register/Logout links based on authentication state
   - [ ] `{% block content %}` placeholder
   - [ ] All other templates extend `base.html`
 - [ ] Index view + template
-  - [ ] List all todos ordered by `created_at` descending
-  - [ ] Inline create form (POST)
-  - [ ] WebSocket listener script included
+  - [ ] Authenticated users see their own Todos ordered by `created_at` descending
+  - [ ] Inline create form (POST) is visible only to authenticated users
+  - [ ] WebSocket listener script only applies updates visible to the current user
 - [ ] Wire all URLs
   - [ ] `todos/urls.py`: `/`, `/search/`, `/dashboard/`, `/queue/`
+  - [ ] `accounts/urls.py`: `/settings/`, signup URL (per PR 07a), `/users/search/`, `/users/<username>/todos/`
   - [ ] Include in `pgstack/urls.py`
 - [ ] Test: full app navigation works end to end in Docker
 
 ---
 
-### PR 14 — Demo polish + README
+### PR 17 — Demo polish + README
 
 - [ ] `README.md`
   - [ ] What pgstack is + the four things Postgres replaces
   - [ ] Prerequisites: Docker + Docker Compose only
   - [ ] Setup: `docker compose up`
-  - [ ] Demo script (4 steps)
+  - [ ] Demo script (auth + 4 Postgres feature steps)
+  - [ ] Explain that Todos are user-owned and Todo lists are private by default
 - [ ] Demo smoke test (run entirely via `docker compose up`)
+  - [ ] Register/login as two users
+  - [ ] User A creates private Todos; User B cannot view them
+  - [ ] User A makes Todo list public; User B can find User A by username and view the public list
   - [ ] Two tabs: create todo in tab A → appears in tab B (LISTEN/NOTIFY)
-  - [ ] `/search/` returns ranked highlighted results (FTS)
-  - [ ] `/dashboard/` shows live counts (materialized view)
-  - [ ] `/queue/` shows jobs processed by concurrent workers (SKIP LOCKED)
+  - [ ] `/search/` returns ranked highlighted results for the authenticated user's visible Todo set (FTS)
+  - [ ] `/dashboard/` shows live counts scoped to the authenticated user or viewed public user (materialized view)
+  - [ ] `/queue/` shows jobs processed by concurrent workers without leaking other users' private Todos (SKIP LOCKED)
 - [ ] Final check: `docker compose down -v && docker compose up --build` from scratch, all features work
 
 ---

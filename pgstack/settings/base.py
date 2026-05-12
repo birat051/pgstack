@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.postgres',
     'channels',
+    'accounts.apps.AccountsConfig',
     'todos.apps.TodosConfig',
 ]
 
@@ -36,6 +37,9 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = 'pgstack.urls'
+LOGIN_URL = '/auth/login/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = LOGIN_URL
 WSGI_APPLICATION = 'pgstack.wsgi.application'
 ASGI_APPLICATION = 'pgstack.asgi.application'
 

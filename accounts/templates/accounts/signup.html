@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Sign up — pgstack</title>
+</head>
+<body>
+    <main>
+        <h1>Create an account</h1>
+
+        {% if form.non_field_errors %}
+            <ul>
+                {% for err in form.non_field_errors %}
+                    <li>{{ err }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        <form method="post" action="{% url 'signup' %}">
+            {% csrf_token %}
+            <p>
+                <label for="id_name">Full name</label><br>
+                {{ form.name }}
+                {% for err in form.name.errors %}<strong>{{ err }}</strong>{% endfor %}
+            </p>
+            <p>
+                <label for="id_email">Email</label><br>
+                {{ form.email }}
+                {% for err in form.email.errors %}<strong>{{ err }}</strong>{% endfor %}
+            </p>
+            <p>
+                <label for="id_password">Password</label><br>
+                {{ form.password }}
+                {% for err in form.password.errors %}<strong>{{ err }}</strong>{% endfor %}
+            </p>
+            <p>
+                <label for="id_password_confirm">Confirm password</label><br>
+                {{ form.password_confirm }}
+                {% for err in form.password_confirm.errors %}<strong>{{ err }}</strong>{% endfor %}
+            </p>
+            <p><button type="submit">Sign up</button></p>
+        </form>
+
+        <p>Already have an account? <a href="{% url 'login' %}">Log in</a> — use your email as your username.</p>
+        <p><a href="{% url 'index' %}">Back to todos</a></p>
+    </main>
+</body>
+</html>
