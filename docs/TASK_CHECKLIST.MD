@@ -71,15 +71,15 @@
 
 ### PR 03 — Core models + initial migration
 
-- [ ] Define `Todo` model (`todos/models.py`)
-  - [ ] Fields: `title`, `notes`, `status` (choices), `due_date`, `created_at`
-  - [ ] `SearchVectorField(null=True)` for FTS (phase 2 prep)
-- [ ] Define `Job` model (`todos/models.py`)
-  - [ ] Fields: `todo` FK, `job_type`, `payload` JSONField, `status` (choices), `created_at`, `processed_at`
-- [ ] Run and verify migration
-  - [ ] `docker compose run web python manage.py makemigrations`
-  - [ ] `docker compose run web python manage.py migrate`
-  - [ ] Confirm tables exist: `docker compose exec db psql -U postgres -c '\dt'`
+- [x] Define `Todo` model (`todos/models.py`)
+  - [x] Fields: `title`, `notes`, `status` (choices), `due_date`, `created_at`
+  - [x] `SearchVectorField(null=True)` for FTS (phase 2 prep)
+- [x] Define `Job` model (`todos/models.py`)
+  - [x] Fields: `todo` FK, `job_type`, `payload` JSONField, `status` (choices), `created_at`, `processed_at`
+- [x] Run and verify migration
+  - [x] `docker compose run web python manage.py makemigrations` *(no model changes; "No changes detected")*
+  - [x] `docker compose run web python manage.py migrate`
+  - [x] Confirm tables exist: `docker compose exec db psql -U postgres -d pgstack -c '\dt'` *(see `todos_todo`, `todos_job`)*
 
 ---
 
