@@ -190,32 +190,32 @@ Do this after PR 07 so signup can create `User` rows aligned with Django auth an
 
 ### PR 08 — Auth: Todo ownership + write permissions
 
-- [ ] Add owner relationship to `Todo`
-  - [ ] `owner = ForeignKey(User, on_delete=CASCADE, related_name='todos')`
-  - [ ] Add `select_related('owner')` where owner is rendered or checked
-  - [ ] Add index for `owner` + existing list ordering (`owner`, `-created_at`) if query shape requires it
-- [ ] Add focused migration for `Todo.owner`
-  - [ ] Decide backfill for existing Todo rows before applying migration (e.g. assign to an initial admin/demo user or create a data migration)
-  - [ ] Keep schema change and data backfill separated if needed
-  - [ ] Verify with `docker compose run web python manage.py migrate`
-- [ ] Update Todo creation flow
-  - [ ] Only authenticated users can add Todo
-  - [ ] Use `@login_required` or `LoginRequiredMixin` on write views
-  - [ ] `todos.services.create_todo(...)` accepts the owner explicitly and writes it in the same create call
-  - [ ] Reject or redirect unauthenticated POSTs to login
-- [ ] Update Todo query helpers
-  - [ ] `todos.services.list_todos_for_user(user: User)` returns only the current user's Todos
-  - [ ] Todo search (`/search/?q=...`) searches the current user's Todos by default
-  - [ ] Shared visibility query shape is centralized instead of duplicated across views
-- [ ] Update downstream features that depend on Todo rows
-  - [ ] Dashboard counts are scoped to the authenticated user's Todos unless viewing another public user's list
-  - [ ] Queue monitor either remains admin/staff-only or only shows jobs for the authenticated user's Todos
-  - [ ] LISTEN/NOTIFY consumers do not leak private Todo data across users
-- [ ] Tests
-  - [ ] Anonymous users cannot create Todos
-  - [ ] Authenticated users create Todos owned by themselves
-  - [ ] User A cannot see User B's private Todos in index, search, dashboard, queue, or live updates
-  - [ ] User A can still see their own Todos
+- [x] Add owner relationship to `Todo`
+  - [x] `owner = ForeignKey(User, on_delete=CASCADE, related_name='todos')`
+  - [x] Add `select_related('owner')` where owner is rendered or checked
+  - [x] Add index for `owner` + existing list ordering (`owner`, `-created_at`)
+- [x] Add focused migration for `Todo.owner`
+  - [x] Decide backfill for existing Todo rows before applying migration — **delete todos with no owner** (no legacy user)
+  - [x] Keep schema change and data migration separated (`RunPython` after nullable `owner`, before `NOT NULL`)
+  - [x] Verify with `docker compose run web python manage.py migrate`
+- [x] Update Todo creation flow
+  - [x] Only authenticated users can add Todo
+  - [x] Use `@login_required` or `LoginRequiredMixin` on write views
+  - [x] `todos.services.create_todo(...)` accepts the owner explicitly and writes it in the same create call
+  - [x] Reject or redirect unauthenticated POSTs to login
+- [x] Update Todo query helpers
+  - [x] `todos.services.list_todos_for_user(user: User)` returns only the current user's Todos
+  - [x] Todo search (`/search/?q=...`) searches the current user's Todos by default
+  - [x] Shared visibility query shape is centralized instead of duplicated across views
+- [x] Update downstream features that depend on Todo rows
+  - [x] Dashboard counts are scoped to the authenticated user's Todos unless viewing another public user's list
+  - [x] Queue monitor only shows jobs for the authenticated user's Todos
+  - [x] LISTEN/NOTIFY consumers do not leak private Todo data across users
+- [x] Tests
+  - [x] Anonymous users cannot create Todos
+  - [x] Authenticated users create Todos owned by themselves
+  - [x] User A cannot see User B's private Todos in index, search, dashboard, queue, or live updates
+  - [x] User A can still see their own Todos
 
 ---
 

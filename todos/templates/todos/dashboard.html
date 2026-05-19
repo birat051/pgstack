@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Dashboard — pgstack</title>
+</head>
+<body>
+    <nav>
+        <a href="{% url 'index' %}">Todos</a>
+        ·
+        <a href="{% url 'search' %}">Search</a>
+        {% if view_username %}· <span>List: @{{ view_username }}</span>{% endif %}
+        ·
+        <a href="{% url 'queue_monitor' %}">Queue</a>
+    </nav>
+    <h1>Todo counts by status</h1>
+    <ul>
+        {% for label, total in status_rows %}
+            <li><strong>{{ label }}</strong>: {{ total }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Job queue — pgstack</title>
+</head>
+<body>
+    <nav>
+        <a href="{% url 'index' %}">Todos</a>
+        ·
+        <a href="{% url 'dashboard' %}">Dashboard</a>
+    </nav>
+    <h1>Jobs for your Todos</h1>
+    {% if jobs %}
+        <table border="1" cellpadding="6">
+            <thead>
+                <tr>
+                    <th>Job ID</th>
+                    <th>Todo</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for job in jobs %}
+                    <tr>
+                        <td>{{ job.id }}</td>
+                        <td>{{ job.todo.title }}</td>
+                        <td>{{ job.job_type }}</td>
+                        <td>{{ job.get_status_display }}</td>
+                        <td>{{ job.created_at }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No jobs found for your Todos.</p>
+    {% endif %}
+</body>
+</html>
