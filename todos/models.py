@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.postgres.search import SearchVectorField
 from django.db import models
 from django.db.models import Value
@@ -14,6 +15,12 @@ class TodoStatus(models.TextChoices):
 
 
 class Todo(models.Model):
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='todos',
+        db_index=False,
+    )
     title = models.CharField(max_length=255)
     notes = models.TextField(blank=True)
     status = models.CharField(
@@ -37,6 +44,12 @@ class Todo(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(
+                fields=['owner', '-created_at'],
+                name='todo_owner_created_at_desc_idx',
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.title

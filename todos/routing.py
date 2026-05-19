@@ -1,2 +1,7 @@
-# WebSocket routes wired in PR 07 (TASK_CHECKLIST)
-websocket_urlpatterns = []
+from django.urls import re_path
+
+from todos import consumers
+
+websocket_urlpatterns = [
+    re_path(r'^ws/todos/$', consumers.TodoConsumer.as_asgi()),
+]
