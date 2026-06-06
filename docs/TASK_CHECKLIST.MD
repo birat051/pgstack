@@ -299,12 +299,12 @@ Do this after PR 07 so signup can create `User` rows aligned with Django auth an
 
 ### PR 13 — SKIP LOCKED: enqueue trigger
 
-- [ ] Write enqueue trigger on `todos_todo` INSERT
-  - [ ] `INSERT INTO todos_job` with `status='queued'`
-  - [ ] `pg_notify('job_queue', NEW.id::text)`
-  - [ ] Apply via `RunSQL` migration with `reverse_sql` to drop
-- [ ] Verify
-  - [ ] Create a todo via the app, confirm a `Job` row appears with `status=queued`
+- [x] Write enqueue trigger on `todos_todo` INSERT
+  - [x] `INSERT INTO todos_job` with `status='queued'`
+  - [x] `pg_notify('job_queue', NEW.id::text)`
+  - [x] Apply via `RunSQL` migration with `reverse_sql` to drop
+- [x] Verify
+  - [x] Create a todo via the app, confirm a `Job` row appears with `status=queued`
 
 ---
 

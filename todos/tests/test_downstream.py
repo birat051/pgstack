@@ -120,12 +120,11 @@ class QueueMonitorViewTests(TestCase):
 
     def test_queue_shows_jobs_for_own_todos_only(self) -> None:
         t_a = Todo.objects.create(title='Ja', owner=self.alice)
-        t_b = Todo.objects.create(title='Jb', owner=self.bob)
-        Job.objects.create(todo=t_a, job_type='t', payload={}, status=JobStatus.QUEUED)
-        Job.objects.create(todo=t_b, job_type='t', payload={}, status=JobStatus.QUEUED)
+        Todo.objects.create(title='Jb', owner=self.bob)
         self.client.login(username='q_alice', password='testpass123!')
         response = self.client.get('/queue/')
         self.assertEqual(response.status_code, 200)
         rows = list(response.context['jobs'])
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0].todo_id, t_a.pk)
+        self.assertEqual(rows[0].status, JobStatus.QUEUED)
