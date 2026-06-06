@@ -310,19 +310,19 @@ Do this after PR 07 so signup can create `User` rows aligned with Django auth an
 
 ### PR 14 — SKIP LOCKED: worker + management command
 
-- [ ] Worker function (`todos/worker.py`)
-  - [ ] `SELECT … FOR UPDATE SKIP LOCKED LIMIT 1`
-  - [ ] `handle_job()` dispatcher switching on `job_type`
-  - [ ] `UPDATE` status to `done` or `failed` + set `processed_at`
-  - [ ] Sleep `0.5s` between polls
-- [ ] `run_worker` management command
-  - [ ] `todos/management/commands/run_worker.py`
-  - [ ] Calls `process_jobs()` in a loop
-- [ ] Confirm `worker` service in `docker-compose.yml` runs the command
-  - [ ] `command: python manage.py run_worker`
-- [ ] Concurrency test
-  - [ ] Scale worker to 3: `docker compose up --scale worker=3`
-  - [ ] Create 10 todos, confirm no job is processed twice
+- [x] Worker function (`todos/worker.py`)
+  - [x] `SELECT … FOR UPDATE SKIP LOCKED LIMIT 1`
+  - [x] `handle_job()` dispatcher switching on `job_type`
+  - [x] `UPDATE` status to `done` or `failed` + set `processed_at`
+  - [x] Sleep `0.5s` between polls
+- [x] `run_worker` management command
+  - [x] `todos/management/commands/run_worker.py`
+  - [x] Calls `process_jobs()` in a loop
+- [x] Confirm `worker` service in `docker-compose.yml` runs the command
+  - [x] `command: python manage.py run_worker`
+- [x] Concurrency test
+  - [x] Scale worker to 3: `docker compose up --scale worker=3`
+  - [x] Create 10 todos, confirm no job is processed twice
 
 ---
 
