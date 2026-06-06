@@ -285,13 +285,13 @@ Do this after PR 07 so signup can create `User` rows aligned with Django auth an
 
 ### PR 12 — Materialized view: dashboard view + template
 
-- [ ] Dashboard view (`todos/views.py`)
-  - [ ] Raw query: `SELECT * FROM todo_stats`
-  - [ ] Wire to `GET /dashboard/` in `todos/urls.py`
-- [ ] `todos/dashboard.html` template
-  - [ ] Status count cards: pending, done, overdue
-  - [ ] No loading state — reads are sub-millisecond
-- [ ] Test: `docker compose up`, visit `/dashboard/`, confirm live counts
+- [x] Dashboard view (`todos/views.py`)
+  - [x] Raw query: `SELECT * FROM todo_stats`
+  - [x] Wire to `GET /dashboard/` in `todos/urls.py`
+- [x] `todos/dashboard.html` template
+  - [x] Status count cards: pending, done, overdue
+  - [x] No loading state — reads are sub-millisecond
+- [x] Test: `docker compose up`, visit `/dashboard/`, confirm live counts
 
 ---
 
