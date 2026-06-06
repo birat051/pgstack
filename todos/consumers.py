@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from urllib.parse import quote_plus
 
 import asyncpg
 from channels.generic.websocket import AsyncWebsocketConsumer
-from decouple import config
+from django.conf import settings
 
 from todos.pg_notify_security import todo_update_payload_allowed_for_user
 
@@ -15,9 +16,19 @@ from todos.pg_notify_security import todo_update_payload_allowed_for_user
 logger = logging.getLogger(__name__)
 
 
+def _postgres_dsn() -> str:
+    """Build asyncpg DSN from Django DB settings (uses test DB name under pytest-django)."""
+    db = settings.DATABASES['default']
+    user = quote_plus(str(db.get('USER', '') or ''))
+    password = quote_plus(str(db.get('PASSWORD', '') or ''))
+    host = str(db.get('HOST', '') or 'localhost')
+    port = str(db.get('PORT', '') or '5432')
+    return f'postgresql://{user}:{password}@{host}:{port}/{db["NAME"]}'
+
+
 class TodoConsumer(AsyncWebsocketConsumer):
-    _listen_task: asyncio.Task | None
-    _stop_listen: asyncio.Event
+    _listen_task: asyncio.Task | None = None
+    _stop_listen: asyncio.Event | None = None
 
     async def connect(self) -> None:
         user = self.scope['user']
@@ -29,11 +40,15 @@ class TodoConsumer(AsyncWebsocketConsumer):
         self._listen_task = asyncio.create_task(self._listen_loop(user.pk))
 
     async def disconnect(self, code: int) -> None:  # noqa: ARG002 — Channels API contract
-        if hasattr(self, '_stop_listen'):
+        if self._stop_listen is not None:
             self._stop_listen.set()
-        task = getattr(self, '_listen_task', None)
-        if task is not None:
-            await task
+        task = self._listen_task
+        if task is not None and not task.done():
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
     async def _listen_loop(self, user_pk: int) -> None:
         conn: asyncpg.Connection | None = None
@@ -55,7 +70,7 @@ class TodoConsumer(AsyncWebsocketConsumer):
                 logger.exception('Failed to relay todo_updates payload')
 
         try:
-            conn = await asyncpg.connect(dsn=config('DATABASE_URL'))
+            conn = await asyncpg.connect(dsn=_postgres_dsn())
             await conn.add_listener('todo_updates', on_notify)
             await self._stop_listen.wait()
         except asyncio.CancelledError:

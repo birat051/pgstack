@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Find users — pgstack</title>
+</head>
+<body>
+    <nav>
+        <a href="{% url 'index' %}">Todos</a>
+        ·
+        <a href="{% url 'search' %}">Search todos</a>
+        ·
+        <a href="{% url 'dashboard' %}">Dashboard</a>
+        ·
+        <a href="{% url 'settings' %}">Settings</a>
+    </nav>
+
+    <main>
+        <h1>Find users</h1>
+        <p>Search by username to open a user's public Todo list.</p>
+
+        <form method="get" action="{% url 'user_search' %}">
+            <label for="q">Username</label>
+            <input type="search" id="q" name="q" value="{{ q }}" autofocus>
+            <button type="submit">Search</button>
+        </form>
+
+        {% if q %}
+            {% if users %}
+                <ul>
+                    {% for user in users %}
+                        <li>
+                            <a href="{% url 'user_todos' username=user.username %}">{{ user.username }}</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>No users match &ldquo;{{ q }}&rdquo;.</p>
+            {% endif %}
+        {% endif %}
+    </main>
+</body>
+</html>
