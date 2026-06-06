@@ -7,9 +7,6 @@ from django.views import View
 
 from accounts import services as accounts_services
 from todos import forms, services
-from todos.models import TodoStatus
-
-
 class IndexView(View):
     """List recent todos on GET; create on POST when authenticated."""
 
@@ -68,13 +65,11 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         request.user,
         todo_list_owner=todo_list_owner,
     )
-    status_rows = [(s.label, counts[s.value]) for s in TodoStatus]
     return render(
         request,
         'todos/dashboard.html',
         {
             'counts': counts,
-            'status_rows': status_rows,
             'view_username': todo_list_owner.username if todo_list_owner else None,
         },
     )

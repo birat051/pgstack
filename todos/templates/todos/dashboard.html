@@ -14,10 +14,19 @@
         <a href="{% url 'queue_monitor' %}">Queue</a>
     </nav>
     <h1>Todo counts by status</h1>
-    <ul>
-        {% for label, total in status_rows %}
-            <li><strong>{{ label }}</strong>: {{ total }}</li>
-        {% endfor %}
-    </ul>
+    <section>
+        <article>
+            <h2>Pending</h2>
+            <p>{{ counts.pending }}</p>
+        </article>
+        <article>
+            <h2>Done</h2>
+            <p>{{ counts.done }}</p>
+        </article>
+        <article>
+            <h2>Overdue</h2>
+            <p>{{ counts.overdue }}</p>
+        </article>
+    </section>
 </body>
 </html>

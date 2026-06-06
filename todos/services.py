@@ -1,5 +1,7 @@
 """Todo CRUD/query helpers — business logic stays here, not views."""
 
+from dataclasses import dataclass
+
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import AnonymousUser, User
 from django.contrib.postgres.search import (
@@ -9,8 +11,8 @@ from django.contrib.postgres.search import (
     TrigramSimilarity,
     TrigramWordSimilarity,
 )
-from django.db import models
-from django.db.models import Case, Count, F, Q, QuerySet, Value, When
+from django.db import connection, models
+from django.db.models import Case, F, Q, QuerySet, Value, When
 from django.db.models.functions import Greatest
 
 from todos.models import Job, Todo, TodoStatus
@@ -69,31 +71,53 @@ def create_todo(
     )
 
 
+@dataclass(frozen=True)
+class TodoStatsRow:
+    status: str
+    total: int
+    overdue_count: int
+    done_count: int
+
+
+def fetch_todo_stats_for_owner(owner_id: int) -> list[TodoStatsRow]:
+    """Read pre-computed per-status counts from the ``todo_stats`` materialized view."""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT status, total, overdue_count, done_count
+            FROM todo_stats
+            WHERE owner_id = %s
+            """,
+            [owner_id],
+        )
+        return [
+            TodoStatsRow(
+                status=row[0],
+                total=row[1],
+                overdue_count=row[2],
+                done_count=row[3],
+            )
+            for row in cursor.fetchall()
+        ]
+
+
 def dashboard_counts_for_viewer(
     viewer: User,
     *,
     todo_list_owner: User | None = None,
 ) -> dict[str, int]:
     """
-    Aggregate ``Todo`` rows by ``status`` for the dashboard cards.
+    Aggregate per-status totals for the dashboard cards from ``todo_stats``.
 
     When ``todo_list_owner`` is set, callers must enforce
     ``accounts.services.can_view_todo_list(viewer, todo_list_owner)`` (typically 404).
-
-    Until PR 12 reads from a materialized view, aggregates run on the owning queryset.
     """
+    owner_id = (todo_list_owner or viewer).pk
     status_keys = [choice.value for choice in TodoStatus]
     counts: dict[str, int] = dict.fromkeys(status_keys, 0)
-    qs: QuerySet[Todo]
-    if todo_list_owner is None:
-        qs = todo_queryset_for_actor(viewer)
-    else:
-        qs = Todo.objects.filter(owner_id=todo_list_owner.pk)
-    grouped = qs.values('status').annotate(total=Count('id'))
-    for row in grouped:
-        status_key = row['status']
-        if status_key in counts:
-            counts[status_key] = row['total']
+    for row in fetch_todo_stats_for_owner(owner_id):
+        if row.status in counts:
+            counts[row.status] = row.total
     return counts
 
 
