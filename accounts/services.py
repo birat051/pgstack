@@ -1,8 +1,11 @@
 from django.contrib.auth.models import AnonymousUser, User
 from django.db import transaction
+from django.db.models import QuerySet
 from django.utils import timezone
 
 from accounts.models import UserSettings
+
+USER_SEARCH_MAX_RESULTS = 20
 
 
 def username_for_normalized_email(normalized_email: str) -> str:
@@ -51,6 +54,18 @@ def set_todo_list_privacy(user: User, is_private: bool) -> None:
         is_todo_list_private=is_private,
         updated_at=timezone.now(),
     )
+
+
+def search_users_by_username(
+    query: str,
+    *,
+    limit: int = USER_SEARCH_MAX_RESULTS,
+) -> QuerySet[User]:
+    """Case-insensitive username contains match, ordered alphabetically."""
+    term = query.strip()
+    if term == '':
+        return User.objects.none()
+    return User.objects.filter(username__icontains=term).order_by('username')[:limit]
 
 
 def can_view_todo_list(viewer: User | AnonymousUser, owner: User) -> bool:

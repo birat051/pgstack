@@ -1,8 +1,12 @@
+import unittest
+
 from django.contrib.auth.models import AnonymousUser, User
+from django.db import connection
 from django.test import TestCase, override_settings
 
 from accounts import services
 from accounts.models import UserSettings
+from todos.models import Todo, TodoStatus
 
 
 @override_settings(ALLOWED_HOSTS=['testserver', 'localhost', '127.0.0.1'])
@@ -45,6 +49,246 @@ class UserSettingsServicesTests(TestCase):
     def test_anonymous_cannot_view_public_list_of_other_user(self) -> None:
         services.set_todo_list_privacy(self.owner, is_private=False)
         self.assertFalse(services.can_view_todo_list(AnonymousUser(), self.owner))
+
+
+@override_settings(ALLOWED_HOSTS=['testserver', 'localhost', '127.0.0.1'])
+class UserSearchServicesTests(TestCase):
+    def setUp(self) -> None:
+        User.objects.create_user(username='alice_public', password='pw')
+        User.objects.create_user(username='alice_other', password='pw')
+        User.objects.create_user(username='bob', password='pw')
+
+    def test_empty_query_returns_no_users(self) -> None:
+        self.assertEqual(list(services.search_users_by_username('')), [])
+        self.assertEqual(list(services.search_users_by_username('   ')), [])
+
+    def test_case_insensitive_contains_match(self) -> None:
+        usernames = list(
+            services.search_users_by_username('ALICE').values_list('username', flat=True)
+        )
+        self.assertEqual(usernames, ['alice_other', 'alice_public'])
+
+    def test_result_limit(self) -> None:
+        for n in range(25):
+            User.objects.create_user(username=f'prefix_user_{n:02d}', password='pw')
+        usernames = list(
+            services.search_users_by_username('prefix_user').values_list('username', flat=True)
+        )
+        self.assertEqual(len(usernames), 20)
+
+
+@override_settings(ALLOWED_HOSTS=['testserver', 'localhost', '127.0.0.1'])
+class UserSearchViewTests(TestCase):
+    def setUp(self) -> None:
+        self.viewer = User.objects.create_user(username='viewer', password='secret')
+        User.objects.create_user(username='findme', password='pw')
+
+    def test_user_search_requires_login(self) -> None:
+        response = self.client.get('/users/search/', {'q': 'find'})
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/auth/login/', response.url)
+
+    def test_authenticated_search_renders_matches(self) -> None:
+        self.client.login(username='viewer', password='secret')
+        response = self.client.get('/users/search/', {'q': 'findme'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'findme')
+        self.assertContains(response, '/users/findme/todos/')
+
+    def test_authenticated_search_empty_state(self) -> None:
+        self.client.login(username='viewer', password='secret')
+        response = self.client.get('/users/search/', {'q': 'zzznonexistent'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'No users match')
+        self.assertContains(response, 'zzznonexistent')
+
+    def test_search_form_uses_get(self) -> None:
+        self.client.login(username='viewer', password='secret')
+        response = self.client.get('/users/search/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'method="get"')
+        self.assertContains(response, 'name="q"')
+
+
+@override_settings(ALLOWED_HOSTS=['testserver', 'localhost', '127.0.0.1'])
+class UserTodoListViewTests(TestCase):
+    def setUp(self) -> None:
+        self.owner = User.objects.create_user(username='list_owner', password='pw')
+        self.viewer = User.objects.create_user(username='list_viewer', password='secret')
+        self.public_todo = Todo.objects.create(
+            title='public item',
+            owner=self.owner,
+            status=TodoStatus.PENDING,
+        )
+        self.private_todo = Todo.objects.create(
+            title='private secret',
+            owner=self.owner,
+            status=TodoStatus.DONE,
+        )
+
+    def test_anonymous_redirects_to_login_before_visibility(self) -> None:
+        services.set_todo_list_privacy(self.owner, is_private=False)
+        response = self.client.get(f'/users/{self.owner.username}/todos/')
+        self.assertRedirects(
+            response,
+            f'/auth/login/?next=/users/{self.owner.username}/todos/',
+            fetch_redirect_response=False,
+        )
+
+    def test_owner_sees_own_list_when_private(self) -> None:
+        services.set_todo_list_privacy(self.owner, is_private=True)
+        self.client.login(username='list_owner', password='pw')
+        response = self.client.get(f'/users/{self.owner.username}/todos/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'public item')
+        self.assertContains(response, 'private secret')
+        self.assertContains(response, 'Your todos')
+
+    def test_other_user_sees_public_list(self) -> None:
+        services.set_todo_list_privacy(self.owner, is_private=False)
+        self.client.login(username='list_viewer', password='secret')
+        response = self.client.get(f'/users/{self.owner.username}/todos/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'public item')
+        self.assertContains(response, 'list_owner')
+
+    def test_other_user_gets_404_for_private_list(self) -> None:
+        services.set_todo_list_privacy(self.owner, is_private=True)
+        self.client.login(username='list_viewer', password='secret')
+        response = self.client.get(f'/users/{self.owner.username}/todos/')
+        self.assertEqual(response.status_code, 404)
+
+    def test_unknown_username_is_404(self) -> None:
+        self.client.login(username='list_viewer', password='secret')
+        response = self.client.get('/users/no_such_user/todos/')
+        self.assertEqual(response.status_code, 404)
+
+    def test_username_lookup_is_case_insensitive(self) -> None:
+        services.set_todo_list_privacy(self.owner, is_private=False)
+        self.client.login(username='list_viewer', password='secret')
+        response = self.client.get('/users/LIST_OWNER/todos/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'public item')
+
+
+@unittest.skipUnless(
+    connection.vendor == 'postgresql',
+    'Hybrid search uses pg_trgm and SearchVector',
+)
+@override_settings(ALLOWED_HOSTS=['testserver', 'localhost', '127.0.0.1'])
+class UserTodoListSearchTests(TestCase):
+    def setUp(self) -> None:
+        self.owner = User.objects.create_user(username='search_list_owner', password='pw')
+        self.viewer = User.objects.create_user(username='search_list_viewer', password='secret')
+        Todo.objects.create(
+            title='Owner alpha todo',
+            notes='unique alpha notes',
+            owner=self.owner,
+        )
+        Todo.objects.create(
+            title='Viewer alpha todo',
+            notes='viewer alpha notes',
+            owner=self.viewer,
+        )
+
+    def test_owner_list_search_finds_only_owner_todos(self) -> None:
+        services.set_todo_list_privacy(self.owner, is_private=False)
+        self.client.login(username='search_list_viewer', password='secret')
+        response = self.client.get(
+            f'/users/{self.owner.username}/todos/',
+            {'q': 'alpha'},
+        )
+        self.assertEqual(response.status_code, 200)
+        titles = [t.title for t in response.context['todos']]
+        self.assertIn('Owner alpha todo', titles)
+        self.assertNotIn('Viewer alpha todo', titles)
+
+    def test_private_owner_list_search_is_404_for_other_user(self) -> None:
+        services.set_todo_list_privacy(self.owner, is_private=True)
+        self.client.login(username='search_list_viewer', password='secret')
+        response = self.client.get(
+            f'/users/{self.owner.username}/todos/',
+            {'q': 'alpha'},
+        )
+        self.assertEqual(response.status_code, 404)
+
+
+@override_settings(ALLOWED_HOSTS=['testserver', 'localhost', '127.0.0.1'])
+class Pr09AuthTests(TestCase):
+    """PR 09 — user search, public/private lists, owner-scoped todo search."""
+
+    def test_username_search_finds_expected_users_and_limits_noise(self) -> None:
+        User.objects.create_user(username='charlie', password='pw')
+        User.objects.create_user(username='charlotte', password='pw')
+        User.objects.create_user(username='dave', password='pw')
+        viewer = User.objects.create_user(username='pr09_viewer', password='secret')
+        self.client.login(username='pr09_viewer', password='secret')
+        response = self.client.get('/users/search/', {'q': 'charl'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'charlie')
+        self.assertContains(response, 'charlotte')
+        self.assertNotContains(response, 'dave')
+
+    def test_username_search_does_not_expose_private_todo_content(self) -> None:
+        owner = User.objects.create_user(username='pr09_private_owner', password='pw')
+        services.set_todo_list_privacy(owner, is_private=True)
+        Todo.objects.create(title='ULTRA_SECRET_TODO_XYZ', owner=owner)
+        viewer = User.objects.create_user(username='pr09_viewer2', password='secret')
+        self.client.login(username='pr09_viewer2', password='secret')
+        response = self.client.get('/users/search/', {'q': 'pr09_private'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'pr09_private_owner')
+        self.assertNotContains(response, 'ULTRA_SECRET_TODO_XYZ')
+
+    def test_public_user_todo_list_visible_for_authenticated_viewer(self) -> None:
+        owner = User.objects.create_user(username='pr09_public_owner', password='pw')
+        viewer = User.objects.create_user(username='pr09_public_viewer', password='secret')
+        services.set_todo_list_privacy(owner, is_private=False)
+        Todo.objects.create(title='Visible on public list', owner=owner)
+        self.client.login(username='pr09_public_viewer', password='secret')
+        response = self.client.get(f'/users/{owner.username}/todos/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Visible on public list')
+
+    def test_public_user_todo_list_redirects_anonymous_to_login(self) -> None:
+        owner = User.objects.create_user(username='pr09_anon_owner', password='pw')
+        services.set_todo_list_privacy(owner, is_private=False)
+        response = self.client.get(f'/users/{owner.username}/todos/')
+        self.assertRedirects(
+            response,
+            f'/auth/login/?next=/users/{owner.username}/todos/',
+            fetch_redirect_response=False,
+        )
+
+    def test_private_user_todo_list_blocked_for_other_users(self) -> None:
+        owner = User.objects.create_user(username='pr09_blocked_owner', password='pw')
+        viewer = User.objects.create_user(username='pr09_blocked_viewer', password='secret')
+        services.set_todo_list_privacy(owner, is_private=True)
+        Todo.objects.create(title='Hidden private item', owner=owner)
+        self.client.login(username='pr09_blocked_viewer', password='secret')
+        response = self.client.get(f'/users/{owner.username}/todos/')
+        self.assertEqual(response.status_code, 404)
+        self.assertNotContains(response, 'Hidden private item', status_code=404)
+
+
+@unittest.skipUnless(
+    connection.vendor == 'postgresql',
+    'Hybrid search uses pg_trgm and SearchVector',
+)
+@override_settings(ALLOWED_HOSTS=['testserver', 'localhost', '127.0.0.1'])
+class Pr09OwnerTodoSearchTests(TestCase):
+    def test_owner_specific_todo_search_respects_privacy(self) -> None:
+        owner = User.objects.create_user(username='pr09_search_owner', password='pw')
+        viewer = User.objects.create_user(username='pr09_search_viewer', password='secret')
+        services.set_todo_list_privacy(owner, is_private=True)
+        Todo.objects.create(title='Owner secret alpha', notes='alpha', owner=owner)
+        Todo.objects.create(title='Viewer alpha', notes='alpha', owner=viewer)
+        self.client.login(username='pr09_search_viewer', password='secret')
+        response = self.client.get(
+            f'/users/{owner.username}/todos/',
+            {'q': 'alpha'},
+        )
+        self.assertEqual(response.status_code, 404)
 
 
 @override_settings(ALLOWED_HOSTS=['testserver', 'localhost', '127.0.0.1'])

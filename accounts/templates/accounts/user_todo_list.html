@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>{% if is_own_list %}Your todos{% else %}{{ owner.username }}&rsquo;s todos{% endif %} — pgstack</title>
+</head>
+<body>
+    <nav>
+        <a href="{% url 'index' %}">Todos</a>
+        ·
+        <a href="{% url 'user_search' %}">Find users</a>
+        ·
+        <a href="{% url 'search' %}">Search todos</a>
+        ·
+        <a href="{% url 'dashboard' %}">Dashboard</a>
+        ·
+        <a href="{% url 'settings' %}">Settings</a>
+    </nav>
+
+    <main>
+        {% if is_own_list %}
+            <h1>Your todos</h1>
+            <p><a href="{% url 'index' %}">Back to your home list</a></p>
+        {% else %}
+            <h1>{{ owner.username }}&rsquo;s todos</h1>
+            <p>Public list for <strong>{{ owner.username }}</strong>.</p>
+        {% endif %}
+
+        <form method="get" action="{% url 'user_todos' username=owner.username %}">
+            <label for="q">Search this list</label>
+            <input type="search" id="q" name="q" value="{{ q }}">
+            <button type="submit">Search</button>
+        </form>
+
+        {% if q %}
+            {% if todos %}
+                <ul>
+                    {% for todo in todos %}
+                        <li>
+                            <strong>{{ todo.title }}</strong>
+                            <div>{{ todo.headline|safe }}</div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p>No results for this search.</p>
+            {% endif %}
+        {% else %}
+            <ul>
+                {% for todo in todos %}
+                    <li>{{ todo.title }} — {{ todo.get_status_display }}</li>
+                {% endfor %}
+            </ul>
+            {% if not todos %}
+                <p>No todos yet.</p>
+            {% endif %}
+        {% endif %}
+    </main>
+</body>
+</html>

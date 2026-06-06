@@ -221,30 +221,30 @@ Do this after PR 07 so signup can create `User` rows aligned with Django auth an
 
 ### PR 09 — Auth: user search + public/private Todo lists
 
-- [ ] User search feature (`accounts/views.py`, `accounts/services.py`)
-  - [ ] Search Django `User` by username only for now
-  - [ ] Use case-insensitive prefix/contains matching with a small limit (e.g. 20)
-  - [ ] Keep search logic in `accounts.services.search_users_by_username(query: str)`
-  - [ ] Wire to `GET /users/search/?q=<username>`
-- [ ] User search template
-  - [ ] Search bar form (`method="get"`)
-  - [ ] Render username and link to public Todo list route
-  - [ ] Empty state for no matching users
-- [ ] Public/private Todo list view
-  - [ ] Route: `GET /users/<username>/todos/`
-  - [ ] Owner always sees their own list
-  - [ ] Other authenticated users can view only if `UserSettings.is_todo_list_private = False`
-  - [ ] Anonymous users can view public lists only if product decision allows it; otherwise redirect to login before evaluating visibility
-  - [ ] Private lists return 404 or 403 consistently (choose one and test it)
-- [ ] Update Todo search behavior for viewed users
-  - [ ] Current user's `/search/` remains own-list search
-  - [ ] Optional owner-specific search (`/users/<username>/todos/?q=<term>`) respects the same privacy rules
-- [ ] Tests
-  - [ ] Username search finds expected users and limits noise
-  - [ ] Username search does not expose private Todo content
-  - [ ] Public user Todo list is visible according to the chosen anonymous/authenticated policy
-  - [ ] Private user Todo list is blocked for other users
-  - [ ] Owner-specific Todo search respects privacy
+- [x] User search feature (`accounts/views.py`, `accounts/services.py`)
+  - [x] Search Django `User` by username only for now
+  - [x] Use case-insensitive prefix/contains matching with a small limit (e.g. 20)
+  - [x] Keep search logic in `accounts.services.search_users_by_username(query: str)`
+  - [x] Wire to `GET /users/search/?q=<username>`
+- [x] User search template
+  - [x] Search bar form (`method="get"`)
+  - [x] Render username and link to public Todo list route
+  - [x] Empty state for no matching users
+- [x] Public/private Todo list view
+  - [x] Route: `GET /users/<username>/todos/`
+  - [x] Owner always sees their own list
+  - [x] Other authenticated users can view only if `UserSettings.is_todo_list_private = False`
+  - [x] Anonymous users can view public lists only if product decision allows it; otherwise redirect to login before evaluating visibility
+  - [x] Private lists return 404 or 403 consistently (choose one and test it)
+- [x] Update Todo search behavior for viewed users
+  - [x] Current user's `/search/` remains own-list search
+  - [x] Optional owner-specific search (`/users/<username>/todos/?q=<term>`) respects the same privacy rules
+- [x] Tests
+  - [x] Username search finds expected users and limits noise
+  - [x] Username search does not expose private Todo content
+  - [x] Public user Todo list is visible according to the chosen anonymous/authenticated policy
+  - [x] Private user Todo list is blocked for other users
+  - [x] Owner-specific Todo search respects privacy
 
 ---
 
@@ -252,17 +252,17 @@ Do this after PR 07 so signup can create `User` rows aligned with Django auth an
 
 ### PR 10 — LISTEN/NOTIFY: consumer + template wiring
 
-- [ ] `TodoConsumer` (`todos/consumers.py`)
-  - [ ] `connect()`: accept + launch `asyncpg` LISTEN coroutine
-  - [ ] `on_notify()`: forward JSON payload to WebSocket client
-  - [ ] `disconnect()`: cancel listener, close `asyncpg` connection
-- [ ] WebSocket routing (`todos/routing.py`)
-  - [ ] `URLRouter` for `ws/todos/`
-  - [ ] Wire into `pgstack/asgi.py` `ProtocolTypeRouter`
-- [ ] `todos/index.html` WebSocket client
-  - [ ] Inline script: `new WebSocket('ws://.../ws/todos/')`
-  - [ ] `onmessage`: prepend or update todo row in DOM without page reload
-- [ ] Test: open two browser tabs at `/`, create a todo in tab A, confirm it appears in tab B
+- [x] `TodoConsumer` (`todos/consumers.py`)
+  - [x] `connect()`: accept + launch `asyncpg` LISTEN coroutine
+  - [x] `on_notify()`: forward JSON payload to WebSocket client
+  - [x] `disconnect()`: cancel listener, close `asyncpg` connection
+- [x] WebSocket routing (`todos/routing.py`)
+  - [x] `URLRouter` for `ws/todos/`
+  - [x] Wire into `pgstack/asgi.py` `ProtocolTypeRouter`
+- [x] `todos/index.html` WebSocket client
+  - [x] Inline script: `new WebSocket('ws://.../ws/todos/')`
+  - [x] `onmessage`: prepend or update todo row in DOM without page reload
+- [x] Test: open two browser tabs at `/`, create a todo in tab A, confirm it appears in tab B _(Docker smoke: logged-in WebSocket on `/ws/todos/` received NOTIFY after POST create on `/`)_
 
 ---
 

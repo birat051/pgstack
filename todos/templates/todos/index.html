@@ -45,7 +45,7 @@
 
     <ul id="todo-list-ul">
         {% for todo in todos %}
-            <li>{{ todo.title }} — <span>{{ todo.get_status_display }}</span></li>
+            <li data-todo-id="{{ todo.id }}">{{ todo.title }} — <span>{{ todo.get_status_display }}</span></li>
         {% endfor %}
     </ul>
     {% if not todos %}
@@ -67,8 +67,18 @@
                         if (hint) {
                             hint.remove();
                         }
-                        var li = document.createElement('li');
                         var statusLabel = row.status || '';
+                        var existing = row.id
+                            ? ul.querySelector('[data-todo-id="' + row.id + '"]')
+                            : null;
+                        if (existing) {
+                            existing.textContent = row.title + ' — ' + statusLabel;
+                            return;
+                        }
+                        var li = document.createElement('li');
+                        if (row.id) {
+                            li.setAttribute('data-todo-id', String(row.id));
+                        }
                         li.textContent = row.title + ' — ' + statusLabel;
                         ul.insertBefore(li, ul.firstChild);
                     } catch (_e) { /* malformed payload ignored */ }

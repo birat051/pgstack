@@ -42,6 +42,18 @@ def list_todos_for_user(
     return todo_queryset_for_actor(user).order_by('-created_at')[:limit]
 
 
+def list_todos_for_owner(
+    owner: User,
+    limit: int = INDEX_PAGE_LIMIT,
+) -> QuerySet[Todo]:
+    """Recent todos for ``owner``; callers must enforce list visibility."""
+    return (
+        Todo.objects.filter(owner_id=owner.pk)
+        .select_related('owner')
+        .order_by('-created_at')[:limit]
+    )
+
+
 def create_todo(
     *,
     owner: AbstractBaseUser,
@@ -104,33 +116,20 @@ TRIGRAM_THRESHOLD = 0.3
 SEARCH_RESULTS_LIMIT = 50
 
 
-def search_todos(
-    q: str,
-    *,
-    user: AbstractBaseUser | AnonymousUser,
-) -> QuerySet[Todo]:
-    """
-    Full-text matches rank first; trigram (typo + substring/prefix-style) fills in the rest.
-
-    Results are limited to ``todo_queryset_for_actor(user)`` (the current user's todos
-    until PR 09 adds broader visibility rules in that helper).
-
-    Extensible: add fields to `Todo.search_document` (and the DB trigger for `search_vector`).
-    """
-    base = todo_queryset_for_actor(user)
-    q = (q or '').strip()
-    if not q:
+def _todo_search_on_queryset(base: QuerySet[Todo], q: str) -> QuerySet[Todo]:
+    """Run hybrid FTS + trigram search on an already-scoped queryset."""
+    term = (q or '').strip()
+    if not term:
         return base.none()
 
-    search_query = SearchQuery(q, search_type='websearch', config='english')
+    search_query = SearchQuery(term, search_type='websearch', config='english')
     trigram_score = Greatest(
-        TrigramSimilarity(F('search_document'), Value(q)),
-        TrigramWordSimilarity(Value(q), F('search_document')),
+        TrigramSimilarity(F('search_document'), Value(term)),
+        TrigramWordSimilarity(Value(term), F('search_document')),
     )
 
     return (
-        base
-        .annotate(
+        base.annotate(
             rank=SearchRank(F('search_vector'), search_query),
             trigram_score=trigram_score,
             headline=SearchHeadline(
@@ -151,3 +150,25 @@ def search_todos(
         )
         .order_by('-fts_tier', '-rank', '-trigram_score')[:SEARCH_RESULTS_LIMIT]
     )
+
+
+def search_todos(
+    q: str,
+    *,
+    user: AbstractBaseUser | AnonymousUser,
+    list_owner: User | None = None,
+) -> QuerySet[Todo]:
+    """
+    Full-text matches rank first; trigram (typo + substring/prefix-style) fills in the rest.
+
+    When ``list_owner`` is omitted, results are limited to ``todo_queryset_for_actor(user)``
+    (the signed-in user's own todos). When set, search runs only within that owner's rows;
+    callers must enforce ``accounts.services.can_view_todo_list(user, list_owner)``.
+
+    Extensible: add fields to `Todo.search_document` (and the DB trigger for `search_vector`).
+    """
+    if list_owner is not None:
+        base = Todo.objects.filter(owner_id=list_owner.pk).select_related('owner')
+    else:
+        base = todo_queryset_for_actor(user)
+    return _todo_search_on_queryset(base, q)

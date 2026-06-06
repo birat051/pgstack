@@ -72,6 +72,16 @@ class IndexViewTests(TestCase):
             fetch_redirect_response=False,
         )
 
+    def test_authenticated_index_includes_websocket_client(self) -> None:
+        self.client.login(
+            username='todolist_owner',
+            password='testpass123!',
+        )
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "new WebSocket(")
+        self.assertContains(response, '/ws/todos/')
+
     def test_authenticated_post_creates_owned_todo(self) -> None:
         self.client.login(
             username='todolist_owner',
