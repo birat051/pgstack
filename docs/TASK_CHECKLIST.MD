@@ -270,16 +270,16 @@ Do this after PR 07 so signup can create `User` rows aligned with Django auth an
 
 ### PR 11 — Materialized view: migration + refresh trigger
 
-- [ ] Create `todo_stats` materialized view via `RunSQL` migration
-  - [ ] `GROUP BY status`: columns `total`, `overdue_count`, `done_count`
-  - [ ] `CREATE UNIQUE INDEX ON todo_stats(status)`
-  - [ ] Include `reverse_sql` to drop view + index
-- [ ] Write refresh trigger on `todos_todo`
-  - [ ] `REFRESH MATERIALIZED VIEW CONCURRENTLY todo_stats`
-  - [ ] Fires `AFTER INSERT OR UPDATE OR DELETE`
-  - [ ] Apply via `RunSQL` migration
-- [ ] Smoke test
-  - [ ] Insert a todo, query `todo_stats` directly, confirm counts updated
+- [x] Create `todo_stats` materialized view via `RunSQL` migration
+  - [x] `GROUP BY status`: columns `total`, `overdue_count`, `done_count`
+  - [x] `CREATE UNIQUE INDEX ON todo_stats(status)`
+  - [x] Include `reverse_sql` to drop view + index
+- [x] Write refresh trigger on `todos_todo`
+  - [x] `REFRESH MATERIALIZED VIEW CONCURRENTLY todo_stats`
+  - [x] Fires `AFTER INSERT OR UPDATE OR DELETE`
+  - [x] Apply via `RunSQL` migration
+- [x] Smoke test
+  - [x] Insert a todo, query `todo_stats` directly, confirm counts updated
 
 ---
 
