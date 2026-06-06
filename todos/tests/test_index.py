@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 
-from todos.models import Todo, TodoStatus
+from todos.models import Job, JobStatus, Todo, TodoStatus
 
 
 @override_settings(ALLOWED_HOSTS=['testserver', 'localhost', '127.0.0.1'])
@@ -95,6 +95,9 @@ class IndexViewTests(TestCase):
         todo = Todo.objects.get(title='From form')
         self.assertEqual(todo.owner_id, self.owner.pk)
         self.assertEqual(todo.notes, 'Owned note')
+        job = Job.objects.get(todo=todo)
+        self.assertEqual(job.status, JobStatus.QUEUED)
+        self.assertEqual(job.job_type, 'send_reminder')
 
     def test_logout_post_redirects_login_and_clears_session(self) -> None:
         get_user_model().objects.create_user(
