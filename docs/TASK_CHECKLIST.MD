@@ -328,13 +328,13 @@ Do this after PR 07 so signup can create `User` rows aligned with Django auth an
 
 ### PR 15 — SKIP LOCKED: queue monitor view + template
 
-- [ ] Queue monitor view (`todos/views.py`)
-  - [ ] Latest 50 jobs, `select_related('todo')`
-  - [ ] Wire to `GET /queue/` in `todos/urls.py`
-- [ ] `todos/queue_monitor.html` template
-  - [ ] Table: `job_type`, todo title, status badge, `processed_at`
-  - [ ] Status badges: queued (gray), processing (amber), done (green), failed (red)
-- [ ] Test: `docker compose up --scale worker=3`, visit `/queue/`, watch jobs move through statuses
+- [x] Queue monitor view (`todos/views.py`)
+  - [x] Latest 50 jobs, `select_related('todo')`
+  - [x] Wire to `GET /queue/` in `todos/urls.py`
+- [x] `todos/queue_monitor.html` template
+  - [x] Table: `job_type`, todo title, status badge, `processed_at`
+  - [x] Status badges: queued (gray), processing (amber), done (green), failed (red)
+- [x] Test: `docker compose up --scale worker=3`, visit `/queue/`, watch jobs move through statuses
 
 ---
 

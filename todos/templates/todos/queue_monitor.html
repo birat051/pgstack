@@ -3,10 +3,25 @@
 <head>
     <meta charset="utf-8">
     <title>Job queue — pgstack</title>
+    <style>
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        .badge-queued { background: #6b7280; color: #fff; }
+        .badge-processing { background: #f59e0b; color: #111; }
+        .badge-done { background: #16a34a; color: #fff; }
+        .badge-failed { background: #dc2626; color: #fff; }
+    </style>
 </head>
 <body>
     <nav>
         <a href="{% url 'index' %}">Todos</a>
+        ·
+        <a href="{% url 'search' %}">Search</a>
         ·
         <a href="{% url 'dashboard' %}">Dashboard</a>
     </nav>
@@ -15,21 +30,23 @@
         <table border="1" cellpadding="6">
             <thead>
                 <tr>
-                    <th>Job ID</th>
-                    <th>Todo</th>
                     <th>Type</th>
+                    <th>Todo</th>
                     <th>Status</th>
-                    <th>Created</th>
+                    <th>Processed</th>
                 </tr>
             </thead>
             <tbody>
                 {% for job in jobs %}
                     <tr>
-                        <td>{{ job.id }}</td>
-                        <td>{{ job.todo.title }}</td>
                         <td>{{ job.job_type }}</td>
-                        <td>{{ job.get_status_display }}</td>
-                        <td>{{ job.created_at }}</td>
+                        <td>{{ job.todo.title }}</td>
+                        <td>
+                            <span class="badge badge-{{ job.status }}">
+                                {{ job.get_status_display }}
+                            </span>
+                        </td>
+                        <td>{% if job.processed_at %}{{ job.processed_at }}{% else %}—{% endif %}</td>
                     </tr>
                 {% endfor %}
             </tbody>
