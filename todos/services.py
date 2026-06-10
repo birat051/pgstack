@@ -17,7 +17,7 @@ from django.db.models.functions import Greatest
 
 from todos.models import Job, Todo, TodoStatus
 
-QUEUE_MONITOR_LIMIT = 75
+QUEUE_MONITOR_LIMIT = 50
 
 
 INDEX_PAGE_LIMIT = 50

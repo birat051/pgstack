@@ -4,6 +4,7 @@ from django.test import TestCase, override_settings
 from accounts.services import set_todo_list_privacy
 from todos.models import Job, JobStatus, Todo, TodoStatus
 from todos.pg_notify_security import todo_update_payload_allowed_for_user
+from todos.services import QUEUE_MONITOR_LIMIT
 
 
 @override_settings(ALLOWED_HOSTS=['testserver', 'localhost', '127.0.0.1'])
@@ -128,3 +129,27 @@ class QueueMonitorViewTests(TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0].todo_id, t_a.pk)
         self.assertEqual(rows[0].status, JobStatus.QUEUED)
+
+    def test_queue_limits_to_latest_jobs(self) -> None:
+        for i in range(QUEUE_MONITOR_LIMIT + 5):
+            Todo.objects.create(title=f'T{i}', owner=self.alice)
+        self.client.login(username='q_alice', password='testpass123!')
+        response = self.client.get('/queue/')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(list(response.context['jobs'])), QUEUE_MONITOR_LIMIT)
+
+    def test_queue_renders_status_badges_and_processed_at(self) -> None:
+        todo = Todo.objects.create(title='Badge test', owner=self.alice)
+        job = Job.objects.get(todo=todo)
+        Job.objects.filter(pk=job.pk).update(
+            status=JobStatus.DONE,
+            processed_at=job.created_at,
+        )
+        job.refresh_from_db()
+        self.client.login(username='q_alice', password='testpass123!')
+        response = self.client.get('/queue/')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'badge-done')
+        self.assertContains(response, 'Badge test')
+        self.assertContains(response, job.job_type)
+        self.assertNotContains(response, '<td>—</td>')
