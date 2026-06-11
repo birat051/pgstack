@@ -4,12 +4,22 @@ Signup: ``name`` is stored on ``User.first_name`` (single field mapping per PR c
 
 from django import forms
 from django.contrib.auth import get_user_model
+from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
 from accounts.services import username_for_normalized_email
 
 User = get_user_model()
+
+
+class LoginForm(AuthenticationForm):
+    """Login fields styled for the design system ``field__input`` widget class."""
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault('class', 'field__input')
 
 
 class SignupForm(forms.Form):
@@ -28,6 +38,24 @@ class SignupForm(forms.Form):
         strip=False,
         widget=forms.PasswordInput(attrs={'autocomplete': 'new-password'}),
     )
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.fields['name'].widget.attrs.update({
+            'class': 'field__input',
+            'placeholder': 'Ada Lovelace',
+            'autocomplete': 'name',
+        })
+        self.fields['email'].widget.attrs.update({
+            'class': 'field__input',
+            'placeholder': 'ada@example.com',
+            'autocomplete': 'email',
+        })
+        for field_name in ('password', 'password_confirm'):
+            self.fields[field_name].widget.attrs.update({
+                'class': 'field__input',
+                'placeholder': '••••••••••••',
+            })
 
     def clean_name(self) -> str:
         name = self.cleaned_data['name'].strip()

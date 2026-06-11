@@ -3,42 +3,36 @@
 {% block title %}Sign up — pgstack{% endblock %}
 
 {% block content %}
-    <main>
-        <h1>Create an account</h1>
+    <div class="auth-page">
+        <div class="auth-card">
+            <header class="auth-card__header">
+                <span class="auth-card__mark" aria-hidden="true">pg</span>
+                <div>
+                    <p class="auth-card__kicker">pgstack · register</p>
+                    <h2 class="auth-card__title">Create an account</h2>
+                </div>
+            </header>
 
-        {% if form.non_field_errors %}
-            <ul>
-                {% for err in form.non_field_errors %}
-                    <li>{{ err }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
+            {% include 'todos/partials/non_field_errors.html' %}
 
-        <form method="post" action="{% url 'signup' %}">
-            {% csrf_token %}
-            <p>
-                <label for="id_name">Full name</label><br>
-                {{ form.name }}
-                {% for err in form.name.errors %}<strong>{{ err }}</strong>{% endfor %}
-            </p>
-            <p>
-                <label for="id_email">Email</label><br>
-                {{ form.email }}
-                {% for err in form.email.errors %}<strong>{{ err }}</strong>{% endfor %}
-            </p>
-            <p>
-                <label for="id_password">Password</label><br>
-                {{ form.password }}
-                {% for err in form.password.errors %}<strong>{{ err }}</strong>{% endfor %}
-            </p>
-            <p>
-                <label for="id_password_confirm">Confirm password</label><br>
-                {{ form.password_confirm }}
-                {% for err in form.password_confirm.errors %}<strong>{{ err }}</strong>{% endfor %}
-            </p>
-            <p><button type="submit">Sign up</button></p>
-        </form>
+            <form class="auth-card__form" method="post" action="{% url 'signup' %}">
+                {% csrf_token %}
+                {% include 'todos/partials/form_field.html' with field=form.name %}
+                {% include 'todos/partials/form_field.html' with field=form.email %}
+                {% include 'todos/partials/form_field.html' with field=form.password %}
+                {% include 'todos/partials/form_field.html' with field=form.password_confirm %}
+                <button type="submit" class="btn btn--primary btn--full">Create account</button>
+            </form>
 
-        <p>Already have an account? <a href="{% url 'login' %}">Log in</a> — use your email as your username.</p>
-    </main>
+            <p class="auth-card__signup-link">
+                <a href="{% url 'login' %}">Already have an account? Log in →</a>
+            </p>
+
+            <div class="auth-card__note" role="note">
+                <span class="auth-card__note-label">Auth note —</span>
+                Registration is handled by <code>django.contrib.auth</code>.
+                A <code>UserSettings</code> row is created on register (private todo list by default).
+            </div>
+        </div>
+    </div>
 {% endblock %}

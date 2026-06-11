@@ -1,0 +1,129 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field__label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.field--error .field__label {
+  color: var(--red);
+}
+
+.field__input {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--rule-2);
+  border-radius: var(--radius-md);
+  background: #fff;
+  font-family: var(--sans);
+  font-size: 14.5px;
+  color: var(--ink);
+}
+
+.field__input:focus {
+  outline: none;
+  border-color: var(--pg);
+  box-shadow: var(--focus-ring);
+}
+
+.field--error .field__input {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(177, 75, 60, 0.12);
+}
+
+.field__error {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--red);
+}
+
+.msg-banner {
+  display: flex;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+}
+
+.msg-banner__icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.msg-banner__text {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.msg-banner__text li + li {
+  margin-top: 4px;
+}
+
+.msg-banner--success {
+  background: #edf7f0;
+  border-color: rgba(61, 122, 74, 0.3);
+  border-left: 3px solid var(--green);
+}
+
+.msg-banner--success .msg-banner__icon {
+  background: var(--green);
+}
+
+.msg-banner--info {
+  background: var(--pg-soft);
+  border-color: rgba(47, 111, 181, 0.25);
+  border-left: 3px solid var(--pg);
+}
+
+.msg-banner--info .msg-banner__icon {
+  background: var(--pg);
+}
+
+.msg-banner--warning {
+  background: #fdf4e4;
+  border-color: rgba(185, 125, 42, 0.3);
+  border-left: 3px solid var(--amber);
+}
+
+.msg-banner--warning .msg-banner__icon {
+  background: var(--amber);
+}
+
+.msg-banner--error {
+  background: #fdf0ee;
+  border-color: rgba(177, 75, 60, 0.3);
+  border-left: 3px solid var(--red);
+}
+
+.msg-banner--error .msg-banner__icon {
+  background: var(--red);
+}
+
+.auth-card .msg-banner {
+  margin-bottom: 18px;
+}

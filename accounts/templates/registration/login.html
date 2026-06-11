@@ -3,28 +3,29 @@
 {% block title %}Log in — pgstack{% endblock %}
 
 {% block content %}
-    <main>
-        <h1>Log in</h1>
+    <div class="auth-page">
+        <div class="auth-card">
+            <header class="auth-card__header">
+                <span class="auth-card__mark" aria-hidden="true">pg</span>
+                <div>
+                    <p class="auth-card__kicker">pgstack · login</p>
+                    <h2 class="auth-card__title">Welcome back</h2>
+                </div>
+            </header>
 
-        {% if form.non_field_errors %}
-            <ul>
-                {% for err in form.non_field_errors %}
-                    <li>{{ err }}</li>
-                {% endfor %}
-            </ul>
-        {% endif %}
+            {% include 'todos/partials/non_field_errors.html' %}
 
-        <form method="post" action="{% url 'login' %}">
-            {% csrf_token %}
-            {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
-            {{ form.username.errors }}
-            <p><label for="id_username">Username</label><br>{{ form.username }}</p>
-            {{ form.password.errors }}
-            <p><label for="id_password">Password</label><br>{{ form.password }}</p>
-            <p><button type="submit">Log in</button></p>
-        </form>
+            <form class="auth-card__form" method="post" action="{% url 'login' %}">
+                {% csrf_token %}
+                {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+                {% include 'todos/partials/form_field.html' with field=form.username %}
+                {% include 'todos/partials/form_field.html' with field=form.password %}
+                <button type="submit" class="btn btn--primary btn--full">Log in</button>
+            </form>
 
-        <p>New here? <a href="{% url 'signup' %}">Create an account</a>.</p>
-        <p>New accounts use email as username when logging in.</p>
-    </main>
+            <p class="auth-card__signup-link">
+                <a href="{% url 'signup' %}">No account? Register →</a>
+            </p>
+        </div>
+    </div>
 {% endblock %}

@@ -1,0 +1,10 @@
+{% if form.non_field_errors %}
+    <div class="msg-banner msg-banner--error" role="alert">
+        <span class="msg-banner__icon" aria-hidden="true">✕</span>
+        <ul class="msg-banner__text">
+            {% for error in form.non_field_errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}

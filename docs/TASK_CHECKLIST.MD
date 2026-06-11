@@ -490,25 +490,25 @@ Do this after PR 07 so signup can create `User` rows aligned with Django auth an
 
 > Centered card layout, Geist Mono labels, design system form inputs.
 
-- [ ] **Login page** (`accounts/templates/registration/login.html`)
-  - [ ] Full-page centered layout: `display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 56px)` (accounts for nav height)
-  - [ ] Auth card: bg `var(--paper)`, border `var(--rule-2)`, radius `var(--radius-2xl)` (16px), padding 32px, max-width 400px, shadow-card
-  - [ ] Card header: `pg` logo mark (40×40 px), kicker "pgstack · login", `<h2>` "Welcome back" (24px, weight 600)
-  - [ ] Form fields using `.field` / `.field__label` / `.field__error` pattern from `partials/form_field.html`
-  - [ ] "Log in" primary button (full width, height 44px)
-  - [ ] Link to signup: "No account? Register →" (Geist Mono 12.5px, `var(--muted)`, centered below button)
-  - [ ] Non-field errors via `partials/non_field_errors.html`
-- [ ] **Signup page** (`accounts/templates/accounts/signup.html`)
-  - [ ] Same centered card layout as login
-  - [ ] Card header: kicker "pgstack · register", `<h2>` "Create an account"
-  - [ ] Fields: Name (maps to `first_name`), Email, Password, Password confirmation — rendered via `partials/form_field.html`
-  - [ ] "Create account" primary button (full width, height 44px)
-  - [ ] Link to login: "Already have an account? Log in →"
-  - [ ] Auth note info callout at bottom of card: `django.contrib.auth` + `UserSettings` created on register (matches `design/Auth Pages.html` detail)
-  - [ ] Non-field errors via `partials/non_field_errors.html`
-- [ ] Verify field widget attrs are set in `accounts/forms.py`
-  - [ ] Each field's widget has `class="field__input"` (or equivalent) + appropriate `placeholder` attr
-  - [ ] Password fields use `PasswordInput` widget
+- [x] **Login page** (`accounts/templates/registration/login.html`)
+  - [x] Full-page centered layout: `display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 56px)` (accounts for nav height)
+  - [x] Auth card: bg `var(--paper)`, border `var(--rule-2)`, radius `var(--radius-2xl)` (16px), padding 32px, max-width 400px, shadow-card
+  - [x] Card header: `pg` logo mark (40×40 px), kicker "pgstack · login", `<h2>` "Welcome back" (24px, weight 600)
+  - [x] Form fields using `.field` / `.field__label` / `.field__error` pattern from `partials/form_field.html`
+  - [x] "Log in" primary button (full width, height 44px)
+  - [x] Link to signup: "No account? Register →" (Geist Mono 12.5px, `var(--muted)`, centered below button)
+  - [x] Non-field errors via `partials/non_field_errors.html`
+- [x] **Signup page** (`accounts/templates/accounts/signup.html`)
+  - [x] Same centered card layout as login
+  - [x] Card header: kicker "pgstack · register", `<h2>` "Create an account"
+  - [x] Fields: Name (maps to `first_name`), Email, Password, Password confirmation — rendered via `partials/form_field.html`
+  - [x] "Create account" primary button (full width, height 44px)
+  - [x] Link to login: "Already have an account? Log in →"
+  - [x] Auth note info callout at bottom of card: `django.contrib.auth` + `UserSettings` created on register (matches `design/Auth Pages.html` detail)
+  - [x] Non-field errors via `partials/non_field_errors.html`
+- [x] Verify field widget attrs are set in `accounts/forms.py`
+  - [x] Each field's widget has `class="field__input"` (or equivalent) + appropriate `placeholder` attr
+  - [x] Password fields use `PasswordInput` widget
 
 ---
 
