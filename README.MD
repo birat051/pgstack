@@ -18,14 +18,134 @@ It is built with Django's MVT architecture — server-rendered templates, no Jav
 
 ---
 
-## What Postgres is doing
+## What Postgres replaces
 
-| Feature                          | Replaces      | How                                                |
-| -------------------------------- | ------------- | -------------------------------------------------- |
-| Full-text search                 | Elasticsearch | `tsvector` + `tsquery` + GIN index + `ts_headline` |
-| Live updates across browser tabs | Redis Pub/Sub | `pg_notify` + `LISTEN` + Django Channels           |
-| Aggregation dashboard            | Redis cache   | `MATERIALIZED VIEW` + `REFRESH CONCURRENTLY`       |
-| Background job queue             | SQS + Celery  | `SELECT FOR UPDATE SKIP LOCKED`                    |
+| Replaces        | Postgres feature                                   |
+| --------------- | -------------------------------------------------- |
+| Elasticsearch   | `tsvector` + `tsquery` + GIN index + `ts_headline` |
+| Redis Pub/Sub   | `pg_notify` + `LISTEN` + Django Channels           |
+| Redis cache     | `MATERIALIZED VIEW` + `REFRESH CONCURRENTLY`       |
+| SQS / Celery    | `SELECT FOR UPDATE SKIP LOCKED`                    |
+
+---
+
+## Auth and privacy
+
+Todos are **user-owned**: every todo has an `owner` foreign key, and authenticated users only see their own list on `/`, `/search/`, `/dashboard/`, and `/queue/`.
+
+Todo lists are **private by default**. New accounts get `UserSettings.is_todo_list_private = True`. Other users cannot browse a private list at `/users/<username>/todos/` (404). To share, go to **Settings** and turn off "Keep my todo list private"; then others can find you under **Users** and view your public todos.
+
+Live WebSocket updates on `/` are scoped to the logged-in user's own todos — NOTIFY payloads are filtered by `owner_id` before reaching the browser.
+
+---
+
+## Prerequisites
+
+Docker and Docker Compose only. No local Python env or Postgres install required.
+
+---
+
+## Setup
+
+```bash
+git clone https://github.com/yourname/pgstack.git
+cd pgstack
+
+cp .env.example .env
+
+docker compose up --build
+```
+
+Visit [http://localhost:8000](http://localhost:8000).
+
+The stack runs three services:
+
+| Service  | Role                                      |
+| -------- | ----------------------------------------- |
+| `db`     | PostgreSQL 16                             |
+| `web`    | Daphne ASGI — Django + Channels on `:8000` |
+| `worker` | Background job processor (`run_worker`)   |
+
+---
+
+## Demo script
+
+Run through these steps after `docker compose up --build`. Use two browser profiles (or one normal + one incognito window) for the two-user flow.
+
+### 0. Register and sign in
+
+1. Open [http://localhost:8000/auth/signup/](http://localhost:8000/auth/signup/) and create **User A** (name, email, password).
+2. Create a few todos from the home page (`/`).
+3. Sign out, then register **User B** in a second profile.
+4. As User B, visit `/users/<user_a_username>/todos/` — you should get **404** (User A's list is private by default).
+5. As User A, go to [Settings](http://localhost:8000/settings/) and uncheck "Keep my todo list private", then save.
+6. As User B, go to [Users](http://localhost:8000/users/search/?q=<user_a_username>) and open User A's public todo list — you should see User A's todos, not your own.
+
+### 1. Live updates (LISTEN / NOTIFY)
+
+Open [http://localhost:8000](http://localhost:8000) in **two tabs** while signed in as the same user. Create a todo in tab A; it appears in tab B without a reload. That is a Postgres `NOTIFY` trigger → Django Channels WebSocket consumer. No Redis.
+
+### 2. Full-text search (FTS)
+
+Go to [http://localhost:8000/search/](http://localhost:8000/search/) and search for a word in a todo title or note. Results are ranked with matching terms highlighted via `ts_headline`. No Elasticsearch.
+
+### 3. Dashboard (materialized view)
+
+Go to [http://localhost:8000/dashboard/](http://localhost:8000/dashboard/). Counts by status come from the `todo_stats` materialized view, refreshed automatically after every write via a Postgres trigger. Counts are scoped to your todos only.
+
+### 4. Job queue (SKIP LOCKED)
+
+Go to [http://localhost:8000/queue/](http://localhost:8000/queue/). Each new todo enqueues a job; the `worker` service claims rows with `SELECT … FOR UPDATE SKIP LOCKED`. Refresh the page to watch jobs move `queued → processing → done`. Scale workers with:
+
+```bash
+docker compose up --scale worker=3
+```
+
+Create several todos and confirm no job is processed twice. Queue rows are scoped to your todos — User B never sees User A's private jobs.
+
+---
+
+## Running tests
+
+Inside Docker (uses the same Postgres instance as the app):
+
+```bash
+docker compose run --rm web python manage.py test
+```
+
+Key suites covering the demo flows: `accounts.tests`, `todos.tests.test_navigation`, `todos.tests.test_downstream`, `todos.tests.test_consumers`.
+
+---
+
+## Project structure
+
+```
+pgstack/
+├── docker-compose.yml
+├── Dockerfile
+├── requirements/
+│   ├── base.txt
+│   ├── dev.txt
+│   └── prod.txt
+├── pgstack/              # Django project config
+│   ├── settings/
+│   ├── asgi.py
+│   └── urls.py
+├── accounts/             # signup, settings, user search, public lists
+│   ├── models.py         # UserSettings (privacy)
+│   ├── services.py
+│   ├── views.py
+│   └── templates/
+└── todos/                # todos, search, dashboard, queue, WebSocket
+    ├── models.py
+    ├── services.py
+    ├── views.py
+    ├── consumers.py
+    ├── worker.py
+    ├── migrations/
+    ├── templates/todos/
+    └── tests/
+```
 
 ---
 
@@ -47,64 +167,6 @@ Every feature demonstrated here has real limitations at scale that the dedicated
 
 ---
 
-## Running pgstack
-
-The only prerequisites are Docker and Docker Compose.
-
-```bash
-git clone https://github.com/yourname/pgstack.git
-cd pgstack
-
-cp .env.example .env
-
-docker compose up --build
-```
-
-Visit [http://localhost:8000](http://localhost:8000).
-
----
-
-## The demo
-
-Once the app is running, here is what to try:
-
-**1. Live updates** — open [http://localhost:8000](http://localhost:8000) in two browser tabs side by side. Create a TODO in one tab. Watch it appear in the other without a page reload. That is a Postgres `NOTIFY` trigger firing through a Django Channels WebSocket consumer. No Redis.
-
-**2. Full-text search** — go to [/search/](http://localhost:8000/search/) and search for any word in a TODO title or note. Results come back ranked by relevance with matching terms highlighted. That is `tsvector`, `ts_rank`, and `ts_headline`. No Elasticsearch.
-
-**3. Dashboard** — go to [/dashboard/](http://localhost:8000/dashboard/) and see live counts by status. The numbers are read from a Postgres materialized view that refreshes itself after every write via a trigger. No Redis cache, no cache warming, no TTL to worry about.
-
-**4. Job queue** — go to [/queue/](http://localhost:8000/queue/) and watch background jobs move from `queued → processing → done` in real time. The `worker` service uses `SELECT FOR UPDATE SKIP LOCKED` to pull jobs atomically. Scale it up with `docker compose up --scale worker=3` and confirm no job is ever processed twice. No SQS, no Celery.
-
----
-
-## Project structure
-
-```
-pgstack/
-├── docker-compose.yml
-├── Dockerfile
-├── requirements/
-│   ├── base.txt
-│   ├── dev.txt
-│   └── prod.txt
-├── pgstack/              # Django project config
-│   ├── settings/
-│   ├── asgi.py
-│   └── urls.py
-└── todos/                # the one app
-    ├── models.py
-    ├── services.py
-    ├── views.py
-    ├── consumers.py
-    ├── worker.py
-    ├── migrations/
-    ├── templates/todos/
-    └── tests/
-```
-
----
-
 ## Further reading
 
 If pgstack made you curious about what Postgres can really do, these are worth reading:
@@ -114,6 +176,8 @@ If pgstack made you curious about what Postgres can really do, these are worth r
 - [Materialized Views](https://www.postgresql.org/docs/current/rules-materializedviews.html) — official docs
 - [SELECT FOR UPDATE SKIP LOCKED](https://www.postgresql.org/docs/current/sql-select.html#SQL-FOR-UPDATE-SHARE) — official docs
 - [Is Postgres good enough?](https://www.amazingcto.com/postgres-for-everything/) — the blog post that inspired this project
+
+Project docs in this repo: [`docs/ARCHITECTURE.MD`](docs/ARCHITECTURE.MD), [`docs/PROJECT_GUIDELINES.MD`](docs/PROJECT_GUIDELINES.MD).
 
 ---
 

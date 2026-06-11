@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>pgstack — Settings &amp; System States</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body { font-family: "Geist", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  :root {
+    --bg:      #f3efe6; --bg-2:    #ebe6da; --paper:   #faf7f0;
+    --ink:     #14181d; --ink-2:   #2a2f37; --muted:   #6b6f78;
+    --rule:    #d9d3c4; --rule-2:  #c8c1ae;
+    --pg:      #2f6fb5; --pg-deep: #1f4d80; --pg-soft: #e6eef8;
+    --amber:   #b97d2a; --green:   #3d7a4a; --red:     #b14b3c;
+    --sans:    "Geist", ui-sans-serif, system-ui, sans-serif;
+    --mono:    "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.35} }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+/* ─────────────────────────────────────────────
+   GLOBAL NAV
+   ───────────────────────────────────────────── */
+const PAGES = ["Todos","Search","Users","Dashboard","Queue","Settings"];
+const GlobalNav = ({ active = "Settings", mobile = false }) => (
+  <div style={{ width:"100%", background:"var(--paper)", borderBottom:"1px solid var(--rule)", boxShadow:"0 2px 8px rgba(20,24,29,.05)", flexShrink:0 }}>
+    <div style={{ display:"flex", alignItems:"center", height: mobile ? 50 : 56, padding: mobile ? "0 18px" : "0 28px" }}>
+      <a href="#" style={{ display:"flex", alignItems:"center", gap:9, textDecoration:"none", flexShrink:0, marginRight: mobile ? 0 : 32 }}>
+        <div style={{ width:28, height:28, borderRadius:7, background:"var(--ink)", color:"var(--paper)", display:"grid", placeItems:"center", fontFamily:"var(--mono)", fontWeight:700, fontSize:13 }}>pg</div>
+        <span style={{ fontFamily:"var(--mono)", fontWeight:600, fontSize:14.5, color:"var(--ink)", letterSpacing:"-0.01em" }}>pgstack</span>
+        {!mobile && <span style={{ fontFamily:"var(--mono)", fontSize:10.5, color:"var(--muted)", border:"1px solid var(--rule)", borderRadius:5, padding:"1px 6px" }}>v0.1</span>}
+      </a>
+      {!mobile && (
+        <nav style={{ display:"flex", alignItems:"center", gap:2, flex:1 }}>
+          {PAGES.map(p => {
+            const on = p === active;
+            return (
+              <a key={p} href="#" style={{ display:"inline-flex", alignItems:"center", height:36, padding:"0 12px", borderRadius:8, textDecoration:"none", fontFamily:"var(--mono)", fontSize:12.5, fontWeight: on?500:400, color: on?"var(--ink)":"var(--muted)", background: on?"var(--bg-2)":"transparent", border: on?"1px solid var(--rule)":"1px solid transparent", position:"relative" }}>
+                {p}
+                {on && <span style={{ position:"absolute", bottom:-1, left:"50%", transform:"translateX(-50%)", width:20, height:2, borderRadius:999, background:"var(--pg)" }} />}
+              </a>
+            );
+          })}
+        </nav>
+      )}
+      {mobile && <div style={{ flex:1 }} />}
+      <div style={{ display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:26, height:26, borderRadius:7, background:"var(--bg-2)", border:"1px solid var(--rule-2)", display:"grid", placeItems:"center", fontFamily:"var(--mono)", fontSize:10, color:"var(--ink-2)", fontWeight:600 }}>AL</div>
+          {!mobile && <span style={{ fontFamily:"var(--mono)", fontSize:12.5, color:"var(--ink-2)" }}>ada</span>}
+        </div>
+        <div style={{ width:1, height:16, background:"var(--rule)" }} />
+        <button style={{ display:"inline-flex", alignItems:"center", height:30, padding:"0 11px", border:"1px solid var(--rule-2)", borderRadius:7, background:"var(--paper)", color:"var(--ink-2)", fontFamily:"var(--mono)", fontSize:11.5, cursor:"pointer" }}>
+          {mobile ? "↩" : "Log out"}
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   DJANGO MESSAGES BANNER
+   ───────────────────────────────────────────── */
+const MsgBanner = ({ kind = "success", text }) => {
+  const map = {
+    success: { bg:"#edf7f0", border:"rgba(61,122,74,.3)",  lb:"var(--green)", icon:"✓", iconBg:"var(--green)", title:"Saved",   titleC:"#2a5c33" },
+    info:    { bg:"var(--pg-soft)", border:"rgba(47,111,181,.25)", lb:"var(--pg)", icon:"i", iconBg:"var(--pg)", title:"Note",    titleC:"var(--pg-deep)" },
+    warning: { bg:"#fdf4e4", border:"rgba(185,125,42,.3)",  lb:"var(--amber)",icon:"⚠", iconBg:"var(--amber)", title:"Warning", titleC:"#7a520e" },
+    error:   { bg:"#fdf0ee", border:"rgba(177,75,60,.3)",   lb:"var(--red)",  icon:"✕", iconBg:"var(--red)",   title:"Error",   titleC:"var(--red)" },
+  };
+  const s = map[kind];
+  return (
+    <div style={{ display:"flex", gap:11, padding:"11px 14px", background:s.bg, border:`1px solid ${s.border}`, borderLeft:`3px solid ${s.lb}`, borderRadius:10 }}>
+      <div style={{ width:20, height:20, borderRadius:"50%", background:s.iconBg, color:"#fff", display:"grid", placeItems:"center", fontSize:11, fontWeight:700, flexShrink:0, marginTop:1, fontFamily:"var(--mono)" }}>{s.icon}</div>
+      <div>
+        <div style={{ fontFamily:"var(--mono)", fontSize:11.5, fontWeight:600, color:s.titleC, marginBottom:3 }}>{s.title}</div>
+        <div style={{ fontSize:13.5, color:"var(--ink-2)", lineHeight:1.45 }}>{text}</div>
+      </div>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   SETTINGS CARD
+   ───────────────────────────────────────────── */
+const SettingsSection = ({ title, sub, children }) => (
+  <div style={{ background:"var(--paper)", border:"1px solid var(--rule-2)", borderRadius:14, overflow:"hidden", boxShadow:"0 1px 0 rgba(20,24,29,.02), 0 8px 24px -16px rgba(20,24,29,.14)" }}>
+    <div style={{ padding:"16px 24px", background:"linear-gradient(180deg,#ffffff 0%,var(--bg-2) 100%)", borderBottom:"1px solid var(--rule)" }}>
+      <div style={{ fontFamily:"var(--sans)", fontWeight:600, fontSize:15, letterSpacing:"-0.01em", color:"var(--ink)" }}>{title}</div>
+      {sub && <div style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)", marginTop:3 }}>{sub}</div>}
+    </div>
+    <div style={{ padding:"22px 24px" }}>{children}</div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   CHECKBOX ROW
+   ───────────────────────────────────────────── */
+const CheckRow = ({ label, checked = false }) => (
+  <label style={{ display:"flex", alignItems:"flex-start", gap:12, cursor:"pointer" }}>
+    <div style={{ width:18, height:18, borderRadius:5, border:`1px solid ${checked ? "var(--ink)" : "var(--rule-2)"}`, background: checked ? "var(--ink)" : "#fff", display:"grid", placeItems:"center", flexShrink:0, marginTop:2 }}>
+      {checked && <span style={{ color:"var(--paper)", fontSize:11, lineHeight:1 }}>✓</span>}
+    </div>
+    <span style={{ fontFamily:"var(--sans)", fontSize:15, color:"var(--ink)", lineHeight:1.4 }}>{label}</span>
+  </label>
+);
+
+/* ═══════════════════════════════════════════════
+   PAGE — SETTINGS CLEAN
+   ═══════════════════════════════════════════════ */
+const SettingsClean = () => (
+  <div style={{ width:1280, background:"var(--bg)", display:"flex", flexDirection:"column" }}>
+    <GlobalNav active="Settings" />
+    <div style={{ maxWidth:600, margin:"0 auto", padding:"40px 28px 48px", width:"100%", display:"flex", flexDirection:"column", gap:24 }}>
+      <div>
+        <div style={{ fontFamily:"var(--mono)", fontSize:10.5, letterSpacing:"0.12em", textTransform:"uppercase", color:"var(--muted)", marginBottom:10 }}>Phase 1 · django.contrib.auth · login required</div>
+        <h1 style={{ margin:0, fontFamily:"var(--sans)", fontWeight:600, fontSize:32, letterSpacing:"-0.025em", color:"var(--ink)" }}>Settings</h1>
+      </div>
+
+      <SettingsSection title="Todo list visibility" sub="Controls access to /users/ada/todos/">
+        <div style={{ display:"flex", flexDirection:"column", gap:18 }}>
+          <CheckRow label="Keep my Todo list private" checked={true} />
+
+          {/* Helper text — checked state */}
+          <div style={{ marginLeft:30, padding:"12px 14px", background:"var(--bg-2)", border:"1px solid var(--rule)", borderRadius:9 }}>
+            <div style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)", lineHeight:1.7 }}>
+              <div><span style={{ color:"var(--ink-2)" }}>Private (current)</span> — other users cannot view your todo list via <span style={{ color:"var(--ink)" }}>/users/ada/todos/</span> and you won't appear in the Users search page.</div>
+              <div style={{ marginTop:4 }}><span style={{ color:"var(--ink-2)" }}>Public</span> — your list is accessible to any logged-in user. You'll appear in user search results.</div>
+            </div>
+          </div>
+
+          <div style={{ borderTop:"1px solid var(--rule)", paddingTop:18, display:"flex", alignItems:"center", gap:12 }}>
+            <button style={{ display:"inline-flex", alignItems:"center", height:40, padding:"0 20px", border:"none", borderRadius:9, background:"var(--ink)", color:"var(--paper)", fontFamily:"var(--mono)", fontSize:13, fontWeight:500, cursor:"pointer", boxShadow:"0 1px 0 rgba(255,255,255,.06) inset, 0 4px 12px rgba(20,24,29,.28)" }}>Save</button>
+            <span style={{ fontFamily:"var(--mono)", fontSize:11.5, color:"var(--muted)" }}>POST /settings/</span>
+          </div>
+        </div>
+      </SettingsSection>
+
+      <div style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)" }}>
+        <span style={{ background:"var(--pg-soft)", border:"1px solid rgba(47,111,181,.22)", color:"var(--pg-deep)", borderRadius:5, padding:"2px 8px", marginRight:8 }}>django.contrib.auth</span>
+        Visibility stored on the User profile model. Checked server-side on every request to the public list route.
+      </div>
+    </div>
+  </div>
+);
+
+/* ═══════════════════════════════════════════════
+   PAGE — SETTINGS WITH SUCCESS BANNER
+   ═══════════════════════════════════════════════ */
+const SettingsSuccess = () => (
+  <div style={{ width:1280, background:"var(--bg)", display:"flex", flexDirection:"column" }}>
+    <GlobalNav active="Settings" />
+    <div style={{ maxWidth:600, margin:"0 auto", padding:"40px 28px 48px", width:"100%", display:"flex", flexDirection:"column", gap:18 }}>
+      <div>
+        <div style={{ fontFamily:"var(--mono)", fontSize:10.5, letterSpacing:"0.12em", textTransform:"uppercase", color:"var(--muted)", marginBottom:10 }}>Phase 1 · django.contrib.auth</div>
+        <h1 style={{ margin:0, fontFamily:"var(--sans)", fontWeight:600, fontSize:32, letterSpacing:"-0.025em", color:"var(--ink)" }}>Settings</h1>
+      </div>
+
+      {/* Django messages.SUCCESS banner */}
+      <MsgBanner kind="success" text="Todo list visibility updated. Your list is now private." />
+
+      <SettingsSection title="Todo list visibility" sub="Controls access to /users/ada/todos/">
+        <div style={{ display:"flex", flexDirection:"column", gap:18 }}>
+          <CheckRow label="Keep my Todo list private" checked={true} />
+          <div style={{ marginLeft:30, padding:"12px 14px", background:"var(--bg-2)", border:"1px solid var(--rule)", borderRadius:9 }}>
+            <div style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)", lineHeight:1.7 }}>
+              <div><span style={{ color:"var(--ink-2)" }}>Private (current)</span> — other users cannot view your todo list or find you in Users search.</div>
+              <div style={{ marginTop:4 }}><span style={{ color:"var(--ink-2)" }}>Public</span> — your list is accessible to any logged-in user.</div>
+            </div>
+          </div>
+          <div style={{ borderTop:"1px solid var(--rule)", paddingTop:18, display:"flex", alignItems:"center", gap:12 }}>
+            <button style={{ display:"inline-flex", alignItems:"center", height:40, padding:"0 20px", border:"none", borderRadius:9, background:"var(--ink)", color:"var(--paper)", fontFamily:"var(--mono)", fontSize:13, fontWeight:500, cursor:"pointer", boxShadow:"0 1px 0 rgba(255,255,255,.06) inset, 0 4px 12px rgba(20,24,29,.28)" }}>Save</button>
+            <span style={{ fontFamily:"var(--mono)", fontSize:11.5, color:"var(--muted)" }}>messages.SUCCESS → banner above</span>
+          </div>
+        </div>
+      </SettingsSection>
+    </div>
+  </div>
+);
+
+/* ═══════════════════════════════════════════════
+   PAGE — SETTINGS MOBILE
+   ═══════════════════════════════════════════════ */
+const SettingsMobile = () => (
+  <div style={{ width:390, background:"var(--bg)", display:"flex", flexDirection:"column" }}>
+    <GlobalNav active="Settings" mobile />
+    <div style={{ padding:"24px 18px 32px", display:"flex", flexDirection:"column", gap:18 }}>
+      <div>
+        <div style={{ fontFamily:"var(--mono)", fontSize:10, letterSpacing:"0.12em", textTransform:"uppercase", color:"var(--muted)", marginBottom:8 }}>django.contrib.auth</div>
+        <h1 style={{ margin:0, fontFamily:"var(--sans)", fontWeight:600, fontSize:26, letterSpacing:"-0.02em", color:"var(--ink)" }}>Settings</h1>
+      </div>
+      <div style={{ background:"var(--paper)", border:"1px solid var(--rule-2)", borderRadius:14, overflow:"hidden", boxShadow:"0 4px 16px -12px rgba(20,24,29,.2)" }}>
+        <div style={{ padding:"14px 18px", background:"linear-gradient(180deg,#fff 0%,var(--bg-2) 100%)", borderBottom:"1px solid var(--rule)" }}>
+          <div style={{ fontFamily:"var(--sans)", fontWeight:600, fontSize:14.5, color:"var(--ink)" }}>Todo list visibility</div>
+        </div>
+        <div style={{ padding:"18px", display:"flex", flexDirection:"column", gap:16 }}>
+          <CheckRow label="Keep my Todo list private" checked={true} />
+          <div style={{ marginLeft:30, fontSize:13, color:"var(--muted)", lineHeight:1.55, fontFamily:"var(--mono)" }}>
+            When private, you won't appear in user search and /users/ada/todos/ is hidden.
+          </div>
+          <div style={{ borderTop:"1px solid var(--rule)", paddingTop:14 }}>
+            <button style={{ display:"flex", alignItems:"center", justifyContent:"center", width:"100%", height:44, border:"none", borderRadius:10, background:"var(--ink)", color:"var(--paper)", fontFamily:"var(--mono)", fontSize:14, fontWeight:500, cursor:"pointer", boxShadow:"0 4px 12px rgba(20,24,29,.25)" }}>Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+/* ═══════════════════════════════════════════════
+   SYSTEM STATES — FORM ERRORS & BANNERS
+   ═══════════════════════════════════════════════ */
+const DSep = ({ label }) => (
+  <div style={{ display:"flex", alignItems:"center", gap:10, margin:"20px 0 12px", fontFamily:"var(--mono)", fontSize:10.5, letterSpacing:"0.13em", textTransform:"uppercase", color:"var(--muted)" }}>
+    <span>{label}</span>
+    <div style={{ flex:1, height:1, background:"var(--rule)" }} />
+  </div>
+);
+
+const SystemStateErrors = () => (
+  <div style={{ padding:24, background:"var(--paper)", fontFamily:"var(--sans)", display:"flex", flexDirection:"column" }}>
+    <DSep label="Inline field error" />
+    <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
+      <span style={{ fontFamily:"var(--mono)", fontSize:11, letterSpacing:"0.1em", textTransform:"uppercase", color:"var(--red)" }}>Password</span>
+      <div style={{ display:"flex", alignItems:"center", height:42, padding:"0 12px", border:"1px solid var(--red)", borderRadius:9, background:"#fff", boxShadow:"0 0 0 3px rgba(177,75,60,.10)" }}>
+        <input readOnly type="password" defaultValue="short" style={{ flex:1, border:"none", outline:"none", background:"transparent", fontFamily:"var(--sans)", fontSize:14.5, color:"var(--ink)" }} />
+      </div>
+      <div style={{ display:"flex", alignItems:"center", gap:7, fontFamily:"var(--mono)", fontSize:11.5, color:"var(--red)" }}>
+        <span>⚠</span> This password is too short. It must contain at least 8 characters.
+      </div>
+    </div>
+
+    <DSep label="Non-field error banner (invalid credentials)" />
+    <div style={{ display:"flex", gap:11, padding:"11px 14px", background:"#fdf0ee", border:"1px solid rgba(177,75,60,.28)", borderLeft:"3px solid var(--red)", borderRadius:10 }}>
+      <div style={{ width:20, height:20, borderRadius:"50%", background:"var(--red)", color:"#fff", display:"grid", placeItems:"center", fontSize:11, fontWeight:700, flexShrink:0, marginTop:1, fontFamily:"var(--mono)" }}>✕</div>
+      <div>
+        <div style={{ fontFamily:"var(--mono)", fontSize:11.5, fontWeight:600, color:"var(--red)", marginBottom:3 }}>Login failed</div>
+        <div style={{ fontSize:13.5, color:"var(--ink-2)", lineHeight:1.45 }}>Your username and password didn't match. Please check your credentials and try again.</div>
+      </div>
+    </div>
+
+    <DSep label="Django messages framework" />
+    <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+      {[
+        { kind:"success", text:"Todo list visibility updated. Your list is now private." },
+        { kind:"info",    text:"Tip — new accounts use email as username when logging in." },
+        { kind:"warning", text:"REFRESH CONCURRENTLY has write overhead — watch at high volumes." },
+        { kind:"error",   text:"Something went wrong. Please try again or contact support." },
+      ].map(({ kind, text }) => <MsgBanner key={kind} kind={kind} text={text} />)}
+    </div>
+
+    <DSep label="Django messages mapping" />
+    <div style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)", lineHeight:2.2 }}>
+      {[["messages.SUCCESS","Green banner · ✓ icon"],["messages.INFO","Blue banner · i icon"],["messages.WARNING","Amber banner · ⚠ icon"],["messages.ERROR","Red banner · ✕ icon"]].map(([k,v]) => (
+        <div key={k} style={{ display:"flex", alignItems:"center", gap:12 }}>
+          <span style={{ color:"var(--ink)", minWidth:200 }}>{k}</span>
+          <span style={{ color:"var(--rule-2)" }}>→</span>
+          <span>{v}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+/* ═══════════════════════════════════════════════
+   SYSTEM STATES — EMPTY STATES + 404
+   ═══════════════════════════════════════════════ */
+const EmptyCard = ({ icon, title, sub, action }) => (
+  <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"28px 20px", border:"1px dashed var(--rule-2)", borderRadius:12, background:"var(--bg)", textAlign:"center" }}>
+    <div style={{ fontSize:22, color:"var(--muted)", opacity:0.45, marginBottom:10 }}>{icon}</div>
+    <div style={{ fontFamily:"var(--sans)", fontSize:14.5, fontWeight:600, letterSpacing:"-0.01em", color:"var(--ink)", marginBottom:4 }}>{title}</div>
+    <div style={{ fontSize:13, color:"var(--muted)", lineHeight:1.5, maxWidth:240 }}>{sub}</div>
+    {action && (
+      <button style={{ marginTop:12, display:"inline-flex", alignItems:"center", height:34, padding:"0 14px", border:"none", borderRadius:7, background:"var(--ink)", color:"var(--paper)", fontFamily:"var(--mono)", fontSize:12, cursor:"pointer" }}>{action}</button>
+    )}
+  </div>
+);
+
+const SystemStateEmpties = () => (
+  <div style={{ padding:24, background:"var(--paper)", display:"flex", flexDirection:"column", gap:0 }}>
+    <DSep label="Empty states — all four contexts" />
+    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:14 }}>
+      <EmptyCard icon="○" title="No todos yet" sub="Create your first todo. It'll appear live when the trigger fires." action="+ New todo" />
+      <EmptyCard icon="tsvector" title="No search results" sub="Try different keywords. Full-text search uses English stemming." />
+      <EmptyCard icon="○" title="No users found" sub={`No users match that query. Try a partial username.`} />
+      <EmptyCard icon="⏸" title="No jobs in queue" sub="Jobs are enqueued automatically when a todo is created." />
+    </div>
+
+    <DSep label="404 — private list block" />
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"32px 24px", border:"1px solid var(--rule-2)", borderRadius:12, background:"var(--bg)", textAlign:"center" }}>
+      <div style={{ width:44, height:44, borderRadius:12, background:"var(--bg-2)", border:"1px solid var(--rule-2)", display:"grid", placeItems:"center", fontSize:20, color:"var(--muted)", marginBottom:14 }}>🔒</div>
+      <div style={{ fontFamily:"var(--sans)", fontSize:17, fontWeight:600, letterSpacing:"-0.015em", color:"var(--ink)", marginBottom:5 }}>Todo list unavailable.</div>
+      <div style={{ fontSize:14, color:"var(--muted)", lineHeight:1.55, maxWidth:300, marginBottom:18 }}>
+        <span style={{ fontFamily:"var(--mono)", color:"var(--ink-2)" }}>bob</span>'s todo list is private. Only bob can view it.
+      </div>
+      <a href="#" style={{ display:"inline-flex", alignItems:"center", height:36, padding:"0 16px", border:"1px solid var(--rule-2)", borderRadius:8, textDecoration:"none", color:"var(--ink-2)", fontFamily:"var(--mono)", fontSize:12.5, background:"var(--paper)" }}>← Back to user search</a>
+    </div>
+
+    <DSep label="404 — implementation note" />
+    <div style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)", lineHeight:1.8 }}>
+      {[["HTTP 403","Return from view when profile.is_private and request.user ≠ owner"],["Template","Extends base.html — renders inside global nav shell"],["Route","GET /users/{username}/todos/ → checked server-side on every request"]].map(([k,v]) => (
+        <div key={k} style={{ display:"flex", gap:12 }}>
+          <span style={{ color:"var(--ink)", minWidth:90 }}>{k}</span>
+          <span style={{ color:"var(--rule-2)" }}>→</span>
+          <span>{v}</span>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+/* ═══════════════════════════════════════════════
+   DEMO WALKTHROUGH STORYBOARD
+   ═══════════════════════════════════════════════ */
+const Hl = ({ children }) => (
+  <span style={{ background:"#fef3c7", color:"#7c4500", fontWeight:500, padding:"0 2px", borderRadius:3 }}>{children}</span>
+);
+
+const FrameShell = ({ num, title, feature, featureColor = "var(--pg)", children }) => (
+  <div style={{ display:"flex", flexDirection:"column", gap:0 }}>
+    {/* Browser-style chrome */}
+    <div style={{ background:"var(--ink)", borderRadius:"12px 12px 0 0", padding:"8px 12px", display:"flex", alignItems:"center", gap:8 }}>
+      <div style={{ display:"flex", gap:5 }}>
+        {["#d9534f","#d9a73a","#5cb85c"].map((c,i) => <div key={i} style={{ width:8, height:8, borderRadius:"50%", background:c, opacity:.55 }} />)}
+      </div>
+      <div style={{ flex:1, background:"rgba(255,255,255,.08)", borderRadius:5, height:18, display:"flex", alignItems:"center", justifyContent:"center" }}>
+        <span style={{ fontFamily:"var(--mono)", fontSize:9.5, color:"rgba(250,247,240,.5)" }}>localhost:8000</span>
+      </div>
+    </div>
+    {/* Screen */}
+    <div style={{ background:"var(--bg)", border:"1px solid var(--rule-2)", borderTop:"none", borderRadius:"0 0 10px 10px", padding:0, overflow:"hidden" }}>
+      {/* Mini nav */}
+      <div style={{ background:"var(--paper)", borderBottom:"1px solid var(--rule)", height:28, display:"flex", alignItems:"center", padding:"0 10px", gap:6 }}>
+        <div style={{ width:18, height:18, borderRadius:5, background:"var(--ink)", color:"var(--paper)", display:"grid", placeItems:"center", fontFamily:"var(--mono)", fontSize:8, fontWeight:700 }}>pg</div>
+        <div style={{ flex:1, display:"flex", gap:4 }}>
+          {["Todos","Search","Dashboard","Queue"].map(p => (
+            <div key={p} style={{ fontFamily:"var(--mono)", fontSize:8, color: p === title ? "var(--ink)" : "var(--muted)", background: p === title ? "var(--bg-2)" : "transparent", padding:"2px 6px", borderRadius:4 }}>{p}</div>
+          ))}
+        </div>
+      </div>
+      {/* Content */}
+      <div style={{ padding:"10px 12px", minHeight:110 }}>{children}</div>
+    </div>
+    {/* Caption */}
+    <div style={{ marginTop:10, display:"flex", alignItems:"flex-start", gap:8 }}>
+      <span style={{ width:20, height:20, borderRadius:6, background:"var(--ink)", color:"var(--paper)", display:"grid", placeItems:"center", fontFamily:"var(--mono)", fontSize:9.5, fontWeight:700, flexShrink:0, marginTop:1 }}>{num}</span>
+      <div>
+        <div style={{ fontFamily:"var(--sans)", fontSize:13, fontWeight:600, color:"var(--ink)", marginBottom:3 }}>{title}</div>
+        <div style={{ display:"inline-flex", alignItems:"center", padding:"2px 8px", background:"var(--pg-soft)", border:`1px solid rgba(47,111,181,.22)`, borderRadius:5, fontFamily:"var(--mono)", fontSize:10.5, color:"var(--pg-deep)" }}>{feature}</div>
+      </div>
+    </div>
+  </div>
+);
+
+const Arrow = () => (
+  <div style={{ display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", paddingBottom:32, flexShrink:0 }}>
+    <div style={{ width:1, height:30, background:"var(--rule-2)" }} />
+    <div style={{ color:"var(--rule-2)", fontSize:14, lineHeight:1 }}>→</div>
+    <div style={{ width:1, height:30, background:"var(--rule-2)" }} />
+  </div>
+);
+
+/* mini status badge */
+const MiniBadge = ({ s }) => {
+  const map = { Pending:"var(--muted)", Done:"var(--green)", Processing:"var(--amber)", Queued:"var(--muted)", Failed:"var(--red)" };
+  return <span style={{ fontFamily:"var(--mono)", fontSize:8.5, color: map[s] || "var(--muted)", background:"var(--bg-2)", border:`1px solid ${map[s]}30`, borderRadius:999, padding:"1px 5px" }}>{s}</span>;
+};
+
+const DemoStoryboard = () => (
+  <div style={{ padding:28, background:"var(--bg-2)", display:"flex", flexDirection:"column", gap:0 }}>
+    <div style={{ fontFamily:"var(--mono)", fontSize:11, letterSpacing:"0.12em", textTransform:"uppercase", color:"var(--muted)", marginBottom:20 }}>Demo walkthrough — all four Postgres features in action</div>
+    <div style={{ display:"grid", gridTemplateColumns:"1fr 28px 1fr 28px 1fr 28px 1fr", gap:0, alignItems:"start" }}>
+
+      {/* Frame 1 — Create todo → Live sync */}
+      <FrameShell num="01" title="Todos" feature="pg_notify · LISTEN/NOTIFY">
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          <div style={{ fontFamily:"var(--sans)", fontWeight:600, fontSize:11, color:"var(--ink)", marginBottom:4 }}>Create todo</div>
+          <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+            <div style={{ flex:1, height:28, background:"#fff", border:"1px solid var(--pg)", borderRadius:6, display:"flex", alignItems:"center", padding:"0 8px", fontFamily:"var(--sans)", fontSize:10, color:"var(--ink)" }}>Deploy to Heroku</div>
+            <button style={{ height:28, padding:"0 10px", background:"var(--ink)", color:"var(--paper)", border:"none", borderRadius:6, fontFamily:"var(--mono)", fontSize:9.5, cursor:"pointer" }}>Add</button>
+          </div>
+          <div style={{ marginTop:4, padding:"6px 8px", background:"var(--pg-soft)", border:"1px solid rgba(47,111,181,.2)", borderRadius:7, fontFamily:"var(--mono)", fontSize:9, color:"var(--pg-deep)", lineHeight:1.5 }}>
+            trigger fires<br/>pg_notify('todo_updates', row_to_json(NEW))
+          </div>
+          <div style={{ marginTop:2, fontFamily:"var(--mono)", fontSize:9, color:"var(--muted)" }}>↓ Tab 2 receives WS message</div>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"5px 8px", background:"rgba(61,122,74,.08)", border:"1px solid rgba(61,122,74,.2)", borderRadius:6 }}>
+            <span style={{ fontFamily:"var(--sans)", fontSize:10, color:"var(--ink)" }}>Deploy to Heroku</span>
+            <MiniBadge s="Pending" />
+          </div>
+        </div>
+      </FrameShell>
+
+      <Arrow />
+
+      {/* Frame 2 — Search highlights */}
+      <FrameShell num="02" title="Search" feature="tsvector · ts_headline · ts_rank">
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          <div style={{ display:"flex", gap:5, alignItems:"center" }}>
+            <div style={{ flex:1, height:26, background:"#fff", border:"1px solid var(--pg)", borderRadius:6, display:"flex", alignItems:"center", padding:"0 8px", gap:5 }}>
+              <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="var(--muted)" strokeWidth="2"><circle cx="7" cy="7" r="5"/><line x1="11" y1="11" x2="15" y2="15"/></svg>
+              <span style={{ fontFamily:"var(--sans)", fontSize:10, color:"var(--ink)" }}>postgres</span>
+            </div>
+            <button style={{ height:26, padding:"0 8px", background:"var(--ink)", color:"var(--paper)", border:"none", borderRadius:5, fontFamily:"var(--mono)", fontSize:9, cursor:"pointer" }}>Search</button>
+          </div>
+          <div style={{ fontSize:9.5, color:"var(--muted)", fontFamily:"var(--mono)" }}>3 results · ranked by ts_rank</div>
+          {[
+            { title:"Set up GIN index", snip:[{t:"…configure a GIN index on the "},{t:"postgres",hl:true},{t:" tsvector…"}] },
+            { title:"Benchmark vs ES",  snip:[{t:"…"},{t:"postgres",hl:true},{t:" native FTS wins below ~1M…"}] },
+          ].map(({ title, snip }, i) => (
+            <div key={i} style={{ padding:"5px 0", borderBottom:"1px solid var(--rule)" }}>
+              <div style={{ fontFamily:"var(--sans)", fontWeight:600, fontSize:10, color:"var(--ink)", marginBottom:2 }}>{title}</div>
+              <div style={{ fontSize:9.5, color:"var(--muted)", lineHeight:1.4 }}>
+                {snip.map((p,j) => p.hl
+                  ? <span key={j} style={{ background:"#fef3c7", color:"#7c4500", padding:"0 1px", borderRadius:2 }}>{p.t}</span>
+                  : <span key={j}>{p.t}</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </FrameShell>
+
+      <Arrow />
+
+      {/* Frame 3 — Dashboard */}
+      <FrameShell num="03" title="Dashboard" feature="MATERIALIZED VIEW · CONCURRENTLY">
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          <div style={{ fontFamily:"var(--sans)", fontWeight:600, fontSize:11, color:"var(--ink)" }}>Todo counts by status</div>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:6 }}>
+            {[{s:"Pending",n:12,c:"var(--muted)"},{s:"Done",n:8,c:"var(--green)"},{s:"Overdue",n:2,c:"var(--red)"}].map(({s,n,c}) => (
+              <div key={s} style={{ background:"var(--paper)", border:`1px solid ${c}30`, borderTop:`2px solid ${c}`, borderRadius:7, padding:"8px 8px 6px" }}>
+                <div style={{ fontFamily:"var(--sans)", fontWeight:700, fontSize:22, color:c, lineHeight:1 }}>{n}</div>
+                <div style={{ fontFamily:"var(--mono)", fontSize:8, color:"var(--muted)", marginTop:3, textTransform:"uppercase", letterSpacing:"0.08em" }}>{s}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ padding:"5px 8px", background:"var(--pg-soft)", border:"1px solid rgba(47,111,181,.2)", borderRadius:6, fontFamily:"var(--mono)", fontSize:9, color:"var(--pg-deep)", lineHeight:1.5 }}>
+            MATERIALIZED VIEW refreshed<br/>after every write — no cache
+          </div>
+        </div>
+      </FrameShell>
+
+      <Arrow />
+
+      {/* Frame 4 — Queue */}
+      <FrameShell num="04" title="Queue" feature="SELECT FOR UPDATE SKIP LOCKED">
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:6, padding:"4px 8px", background:"var(--paper)", border:"1px solid var(--rule-2)", borderRadius:6 }}>
+            <span style={{ width:6, height:6, borderRadius:"50%", background:"var(--amber)", animation:"pulse-dot 1.4s ease-in-out infinite" }} />
+            <span style={{ fontFamily:"var(--mono)", fontSize:9, color:"var(--amber)" }}>1 processing</span>
+            <span style={{ marginLeft:"auto", fontFamily:"var(--mono)", fontSize:9, color:"var(--muted)" }}>2 workers</span>
+          </div>
+          <div style={{ background:"var(--paper)", border:"1px solid var(--rule-2)", borderRadius:8, overflow:"hidden" }}>
+            {[
+              { todo:"Buy milk",   status:"Queued",     active:false },
+              { todo:"Deploy app", status:"Processing", active:true  },
+              { todo:"Write docs", status:"Done",       active:false },
+            ].map(({ todo, status, active }, i) => (
+              <div key={i} style={{ display:"grid", gridTemplateColumns:"1fr auto", alignItems:"center", padding:"5px 8px", borderBottom: i===2 ? "none":"1px solid var(--rule)", borderLeft: active?"2px solid var(--amber)":"2px solid transparent", background: active?"rgba(185,125,42,.04)":"transparent" }}>
+                <span style={{ fontFamily:"var(--sans)", fontSize:9.5, color:"var(--ink)" }}>{todo}</span>
+                <MiniBadge s={status} />
+              </div>
+            ))}
+          </div>
+          <div style={{ padding:"5px 8px", background:"rgba(20,24,29,.04)", border:"1px solid var(--rule)", borderRadius:6, fontFamily:"var(--mono)", fontSize:9, color:"var(--muted)", lineHeight:1.5 }}>
+            SELECT … FOR UPDATE<br/>SKIP LOCKED
+          </div>
+        </div>
+      </FrameShell>
+
+    </div>
+
+    {/* Feature legend */}
+    <div style={{ marginTop:28, padding:"14px 16px", background:"var(--paper)", border:"1px solid var(--rule-2)", borderRadius:10, display:"flex", flexWrap:"wrap", gap:10, alignItems:"center" }}>
+      <span style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)", marginRight:4 }}>Full stack covered →</span>
+      {[["pg_notify + LISTEN","Phase 3"],["tsvector + GIN","Phase 2"],["MATERIALIZED VIEW","Phase 4"],["SKIP LOCKED","Phase 5"]].map(([f,p]) => (
+        <span key={f} style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"3px 9px", background:"var(--pg-soft)", border:"1px solid rgba(47,111,181,.22)", borderRadius:5, fontFamily:"var(--mono)", fontSize:11, color:"var(--pg-deep)" }}>
+          {f} <span style={{ color:"var(--muted)", fontSize:10 }}>· {p}</span>
+        </span>
+      ))}
+    </div>
+  </div>
+);
+
+/* ═══════════════════════════════════════════════
+   ROOT
+   ═══════════════════════════════════════════════ */
+const App = () => (
+  <DesignCanvas>
+    <DCSection id="settings" title="Settings page" subtitle="/settings/ · login required · visibility toggle · success state · mobile">
+      <DCArtboard id="settings-clean"   label="Desktop — default (private checked)"  width={1280}><SettingsClean /></DCArtboard>
+      <DCArtboard id="settings-success" label="Desktop — after save (success banner)" width={1280}><SettingsSuccess /></DCArtboard>
+      <DCArtboard id="settings-mobile"  label="Mobile — 390px"                        width={390}><SettingsMobile /></DCArtboard>
+    </DCSection>
+
+    <DCSection id="states" title="System States" subtitle="Form errors · Django messages · Empty states · 404 private list">
+      <DCArtboard id="states-errors"   label="Form errors & Django messages banners" width={560}><SystemStateErrors /></DCArtboard>
+      <DCArtboard id="states-empties"  label="Empty states (×4) + 404 private list"  width={560}><SystemStateEmpties /></DCArtboard>
+    </DCSection>
+
+    <DCSection id="storyboard" title="Demo Walkthrough" subtitle="4-phase storyboard — all Postgres features in one strip">
+      <DCArtboard id="story" label="Create → Live sync → Search → Dashboard → Queue" width={980}><DemoStoryboard /></DCArtboard>
+    </DCSection>
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

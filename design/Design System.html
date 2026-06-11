@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>pgstack — Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body { font-family: "Geist", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  :root {
+    --bg:       #f3efe6;
+    --bg-2:     #ebe6da;
+    --paper:    #faf7f0;
+    --ink:      #14181d;
+    --ink-2:    #2a2f37;
+    --muted:    #6b6f78;
+    --rule:     #d9d3c4;
+    --rule-2:   #c8c1ae;
+    --pg:       #2f6fb5;
+    --pg-deep:  #1f4d80;
+    --pg-soft:  #e6eef8;
+    --amber:    #b97d2a;
+    --green:    #3d7a4a;
+    --red:      #b14b3c;
+    --sans:     "Geist", ui-sans-serif, system-ui, sans-serif;
+    --mono:     "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --serif:    "Instrument Serif", Georgia, serif;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+
+/* ─────────────────────────────────────────────
+   SHARED MICRO-COMPONENTS
+   ───────────────────────────────────────────── */
+const DSep = ({ label }) => (
+  <div style={{
+    display: "flex", alignItems: "center", gap: 10,
+    margin: "18px 0 12px",
+    fontFamily: "var(--mono)", fontSize: 10.5,
+    letterSpacing: "0.13em", textTransform: "uppercase", color: "var(--muted)"
+  }}>
+    <span>{label}</span>
+    <div style={{ flex: 1, height: 1, background: "var(--rule)" }} />
+  </div>
+);
+
+const Swatch = ({ color, label, token, hex }) => (
+  <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+    <div style={{
+      width: 60, height: 44, borderRadius: 9, background: color,
+      border: "1px solid rgba(20,24,29,0.09)",
+      boxShadow: "0 1px 3px rgba(20,24,29,0.07)"
+    }} />
+    <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--ink)", fontWeight: 500 }}>{label}</div>
+    <div style={{ fontFamily: "var(--mono)", fontSize: 9.5, color: "var(--muted)", lineHeight: 1.5 }}>
+      <div>{token}</div>
+      <div>{hex}</div>
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   1. COLOR TOKENS
+   ───────────────────────────────────────────── */
+const ArtColors = () => (
+  <div style={{ padding: 24, background: "var(--paper)", fontFamily: "var(--sans)" }}>
+    <DSep label="Neutral / Surface" />
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
+      <Swatch color="var(--paper)"  label="Paper"   token="--paper"  hex="#faf7f0" />
+      <Swatch color="var(--bg)"     label="BG"       token="--bg"     hex="#f3efe6" />
+      <Swatch color="var(--bg-2)"   label="BG 2"     token="--bg-2"   hex="#ebe6da" />
+      <Swatch color="var(--rule)"   label="Rule"     token="--rule"   hex="#d9d3c4" />
+      <Swatch color="var(--rule-2)" label="Rule 2"   token="--rule-2" hex="#c8c1ae" />
+      <Swatch color="var(--muted)"  label="Muted"    token="--muted"  hex="#6b6f78" />
+      <Swatch color="var(--ink-2)"  label="Ink 2"    token="--ink-2"  hex="#2a2f37" />
+      <Swatch color="var(--ink)"    label="Ink"      token="--ink"    hex="#14181d" />
+    </div>
+
+    <DSep label="Accent — Postgres Blue" />
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
+      <Swatch color="var(--pg-soft)" label="PG Soft"  token="--pg-soft"  hex="#e6eef8" />
+      <Swatch color="var(--pg)"      label="PG"        token="--pg"       hex="#2f6fb5" />
+      <Swatch color="var(--pg-deep)" label="PG Deep"   token="--pg-deep"  hex="#1f4d80" />
+    </div>
+
+    <DSep label="Semantic — Status" />
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
+      <Swatch color="#edf7f0"        label="Green Soft" token="—"         hex="#edf7f0" />
+      <Swatch color="var(--green)"   label="Green"      token="--green"   hex="#3d7a4a" />
+      <Swatch color="#fdf4e4"        label="Amber Soft" token="—"         hex="#fdf4e4" />
+      <Swatch color="var(--amber)"   label="Amber"      token="--amber"   hex="#b97d2a" />
+      <Swatch color="#fdf0ee"        label="Red Soft"   token="—"         hex="#fdf0ee" />
+      <Swatch color="var(--red)"     label="Red"        token="--red"     hex="#b14b3c" />
+    </div>
+
+    <DSep label="Note" />
+    <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)", lineHeight: 1.6 }}>
+      All tokens defined in <span style={{ color: "var(--ink)" }}>base.css :root</span>. Dark mode overrides applied under <span style={{ color: "var(--ink)" }}>[data-theme="dark"]</span> or <span style={{ color: "var(--ink)" }}>@media (prefers-color-scheme: dark)</span>.
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   2. DARK MODE TOKENS
+   ───────────────────────────────────────────── */
+const ArtDark = () => (
+  <div style={{ padding: 24, background: "#0f1216", fontFamily: "var(--sans)", borderRadius: 0 }}>
+    <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b7280", marginBottom: 14 }}>
+      Dark mode overrides · [data-theme="dark"]
+    </div>
+    {[
+      ["--bg",       "#0f1216",               "Page background"],
+      ["--bg-2",     "#14181d",               "Elevated surface"],
+      ["--paper",    "#1c2128",               "Card / input surface"],
+      ["--ink",      "#e7e3d7",               "Primary text"],
+      ["--ink-2",    "#cfd3dc",               "Secondary text"],
+      ["--muted",    "#8a8f99",               "Tertiary / placeholder"],
+      ["--rule",     "#1c2128",               "Borders"],
+      ["--rule-2",   "#2a2f37",               "Subtle borders"],
+      ["--pg",       "#6aaef0",               "Accent blue (lightened)"],
+      ["--pg-soft",  "rgba(106,174,240,.14)", "Accent surface"],
+      ["--pg-deep",  "#9ec1ed",               "Deep accent text"],
+    ].map(([token, hex, desc]) => (
+      <div key={token} style={{
+        display: "grid", gridTemplateColumns: "130px 110px 1fr",
+        alignItems: "center", gap: 10,
+        padding: "8px 0", borderBottom: "1px solid #1c2128",
+        fontFamily: "var(--mono)", fontSize: 11.5,
+      }}>
+        <span style={{ color: "#9ec1ed" }}>{token}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 14, height: 14, borderRadius: 3, background: hex, border: "1px solid rgba(255,255,255,0.1)", flexShrink: 0 }} />
+          <span style={{ color: "#c7a96b", fontSize: 10.5 }}>{hex}</span>
+        </div>
+        <span style={{ color: "#6b7280", fontSize: 11 }}>{desc}</span>
+      </div>
+    ))}
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   3. TYPOGRAPHY
+   ───────────────────────────────────────────── */
+const ArtType = () => (
+  <div style={{ padding: 24, background: "var(--paper)", fontFamily: "var(--sans)" }}>
+    {[
+      { label: "Display",  size: "58px",   weight: 600, lh: "0.98", ls: "-0.035em", sample: "One database." },
+      { label: "H1",       size: "42px",   weight: 600, lh: "1.02", ls: "-0.03em",  sample: "Search, Queue, Live" },
+      { label: "H2",       size: "30px",   weight: 600, lh: "1.08", ls: "-0.025em", sample: "Full-text search" },
+      { label: "H3",       size: "22px",   weight: 600, lh: "1.12", ls: "-0.02em",  sample: "Replace Elasticsearch" },
+      { label: "H4",       size: "18px",   weight: 600, lh: "1.2",  ls: "-0.015em", sample: "GIN index · ts_rank scoring" },
+      { label: "Body lg",  size: "16.5px", weight: 400, lh: "1.55", ls: "0",        sample: "Results ranked by relevance with ts_headline snippets." },
+      { label: "Body",     size: "14.5px", weight: 400, lh: "1.55", ls: "0",        sample: "The worker pulls jobs using SELECT … FOR UPDATE SKIP LOCKED." },
+      { label: "Body sm",  size: "13px",   weight: 400, lh: "1.5",  ls: "0",        sample: "Sessions persisted via django.contrib.auth · Postgres 16" },
+      { label: "Label",    size: "11.5px", weight: 400, lh: "1",    ls: "0.1em",    sample: "PHASE 2 · STATUS · QUEUED", mono: true },
+      { label: "Code",     size: "12.5px", weight: 400, lh: "1.6",  ls: "0",        sample: "SELECT id FROM todos_job WHERE status = 'queued'", mono: true, dark: true },
+    ].map(({ label, size, weight, lh, ls, sample, mono, dark }) => (
+      <div key={label} style={{
+        display: "grid", gridTemplateColumns: "70px 1fr 150px",
+        alignItems: "baseline", gap: 14,
+        padding: "9px 0", borderBottom: "1px solid var(--rule)",
+      }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--muted)", letterSpacing: "0.08em", textTransform: "uppercase", alignSelf: "center" }}>{label}</div>
+        <div style={{
+          fontFamily: mono ? "var(--mono)" : "var(--sans)",
+          fontSize: size, fontWeight: weight, lineHeight: lh, letterSpacing: ls,
+          color: dark ? "#c7a96b" : "var(--ink)",
+          background: dark ? "#0f1216" : "transparent",
+          padding: dark ? "4px 10px" : 0,
+          borderRadius: dark ? 6 : 0,
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>{sample}</div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 9.5, color: "var(--muted)", alignSelf: "center", lineHeight: 1.6, textAlign: "right" }}>
+          <div>{size} · {weight}</div>
+          <div>lh {lh}</div>
+          {ls !== "0" && <div>ls {ls}</div>}
+        </div>
+      </div>
+    ))}
+
+    <div style={{ marginTop: 14, padding: "11px 14px", background: "#0f1216", borderRadius: 10, fontFamily: "var(--mono)", fontSize: 12, lineHeight: 1.6, color: "#8a8f99" }}>
+      <span style={{ color: "#9ec1ed" }}>--sans</span>: Geist &nbsp;·&nbsp;
+      <span style={{ color: "#9ec1ed" }}>--mono</span>: Geist Mono &nbsp;·&nbsp;
+      <span style={{ color: "#9ec1ed", fontFamily: "var(--serif)", fontStyle: "italic" }}>--serif</span>
+      <span style={{ color: "#c7a96b", fontFamily: "var(--serif)", fontStyle: "italic" }}> Instrument Serif italic — editorial only</span>
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   4. SPACING + RADIUS + SHADOW
+   ───────────────────────────────────────────── */
+const ArtSpacing = () => (
+  <div style={{ padding: 24, background: "var(--paper)", fontFamily: "var(--sans)" }}>
+    <DSep label="Spacing scale (4px base)" />
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {[4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80].map(n => (
+        <div key={n} style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--muted)", width: 26, textAlign: "right" }}>{n}</div>
+          <div style={{ width: n, height: 12, borderRadius: 3, background: "var(--pg)", opacity: 0.65, flexShrink: 0 }} />
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--muted)" }}>{n / 4}rem</div>
+        </div>
+      ))}
+    </div>
+
+    <DSep label="Border radius" />
+    <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 4 }}>
+      {[{ r: 4, l: "xs" }, { r: 6, l: "sm" }, { r: 8, l: "base" }, { r: 10, l: "md" }, { r: 12, l: "lg" }, { r: 16, l: "xl" }, { r: 999, l: "pill" }].map(({ r, l }) => (
+        <div key={r} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 7 }}>
+          <div style={{ width: 38, height: 38, borderRadius: r, background: "var(--bg-2)", border: "1px solid var(--rule-2)" }} />
+          <div style={{ fontFamily: "var(--mono)", fontSize: 9.5, color: "var(--muted)", textAlign: "center", lineHeight: 1.4 }}>{l}<br />{r === 999 ? "999" : r + "px"}</div>
+        </div>
+      ))}
+    </div>
+
+    <DSep label="Shadows" />
+    {[
+      { label: "sm",    v: "0 1px 2px rgba(20,24,29,0.08)" },
+      { label: "md",    v: "0 4px 12px rgba(20,24,29,0.12)" },
+      { label: "lg",    v: "0 16px 40px rgba(20,24,29,0.20)" },
+      { label: "card",  v: "0 1px 0 rgba(20,24,29,0.02), 0 24px 60px -40px rgba(20,24,29,0.18)" },
+      { label: "focus", v: "0 0 0 3px rgba(47,111,181,0.18)" },
+    ].map(({ label, v }) => (
+      <div key={label} style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 10 }}>
+        <div style={{ width: 44, height: 30, borderRadius: 8, background: "var(--paper)", boxShadow: v, border: "1px solid var(--rule)", flexShrink: 0 }} />
+        <div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--ink)", marginBottom: 2 }}>shadow-{label}</div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 9.5, color: "var(--muted)", maxWidth: 300, lineHeight: 1.5 }}>{v}</div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   5. BUTTONS
+   ───────────────────────────────────────────── */
+const ArtButtons = () => (
+  <div style={{ padding: 24, background: "var(--paper)", fontFamily: "var(--sans)" }}>
+    <DSep label="Primary" />
+    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <button style={{ display: "inline-flex", alignItems: "center", height: 42, padding: "0 18px", border: "none", borderRadius: 9, background: "var(--ink)", color: "var(--paper)", fontFamily: "var(--mono)", fontSize: 13, fontWeight: 500, cursor: "pointer", boxShadow: "0 1px 0 rgba(255,255,255,0.06) inset, 0 4px 12px rgba(20,24,29,0.3)", letterSpacing: "0.01em" }}>Save todo</button>
+      <button style={{ display: "inline-flex", alignItems: "center", height: 34, padding: "0 14px", border: "none", borderRadius: 7, background: "var(--ink)", color: "var(--paper)", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", boxShadow: "0 1px 0 rgba(255,255,255,0.06) inset, 0 3px 8px rgba(20,24,29,0.25)" }}>sm</button>
+      <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--muted)", marginLeft: 4 }}>:hover → bg #0c1014 &nbsp; :active → translateY(1px)</span>
+    </div>
+
+    <DSep label="Secondary" />
+    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <button style={{ display: "inline-flex", alignItems: "center", height: 42, padding: "0 18px", border: "1px solid var(--rule-2)", borderRadius: 9, background: "var(--paper)", color: "var(--ink)", fontFamily: "var(--mono)", fontSize: 13, cursor: "pointer", boxShadow: "0 1px 2px rgba(20,24,29,0.06)" }}>Cancel</button>
+      <button style={{ display: "inline-flex", alignItems: "center", height: 42, padding: "0 18px", border: "1px solid var(--pg)", borderRadius: 9, background: "var(--pg-soft)", color: "var(--pg-deep)", fontFamily: "var(--mono)", fontSize: 13, cursor: "pointer" }}>Run query</button>
+    </div>
+
+    <DSep label="Ghost" />
+    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <button style={{ display: "inline-flex", alignItems: "center", height: 42, padding: "0 18px", border: "none", borderRadius: 9, background: "transparent", color: "var(--ink-2)", fontFamily: "var(--mono)", fontSize: 13, cursor: "pointer" }}>Discard</button>
+      <span style={{ fontFamily: "var(--mono)", fontSize: 10, color: "var(--muted)" }}>:hover → bg rgba(20,24,29,0.05)</span>
+    </div>
+
+    <DSep label="Destructive" />
+    <button style={{ display: "inline-flex", alignItems: "center", height: 42, padding: "0 18px", border: "1px solid rgba(177,75,60,0.3)", borderRadius: 9, background: "#fdf0ee", color: "var(--red)", fontFamily: "var(--mono)", fontSize: 13, cursor: "pointer" }}>Delete todo</button>
+
+    <DSep label="Disabled" />
+    <button disabled style={{ display: "inline-flex", alignItems: "center", height: 42, padding: "0 18px", border: "1px solid var(--rule)", borderRadius: 9, background: "var(--bg-2)", color: "var(--muted)", fontFamily: "var(--mono)", fontSize: 13, cursor: "not-allowed", opacity: 0.65 }}>Submit</button>
+
+    <DSep label="Log out — Django POST form (not a link)" />
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <button style={{ display: "inline-flex", alignItems: "center", height: 32, padding: "0 13px", border: "1px solid var(--rule-2)", borderRadius: 7, background: "var(--paper)", color: "var(--ink-2)", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", boxShadow: "0 1px 2px rgba(20,24,29,0.04)" }}>Log out</button>
+      <span style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--muted)" }}>method=POST · action=/accounts/logout/</span>
+    </div>
+
+    <DSep label="Icon buttons" />
+    <div style={{ display: "flex", gap: 8 }}>
+      {["⊕ Add", "↺ Retry", "✕ Remove", "↗ View"].map(lbl => (
+        <button key={lbl} style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 12px", border: "1px solid var(--rule-2)", borderRadius: 7, background: "var(--paper)", color: "var(--ink-2)", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer" }}>{lbl}</button>
+      ))}
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   6. FORM INPUTS
+   ───────────────────────────────────────────── */
+const ArtInputs = () => (
+  <div style={{ padding: 24, background: "var(--paper)", fontFamily: "var(--sans)" }}>
+    <DSep label="Text input — default" />
+    <label style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+      <span style={{ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)" }}>Title</span>
+      <div style={{ display: "flex", alignItems: "center", height: 42, padding: "0 12px", border: "1px solid var(--rule-2)", borderRadius: 9, background: "#fff" }}>
+        <input readOnly placeholder="Buy groceries" style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: "var(--sans)", fontSize: 14.5, color: "var(--muted)" }} />
+      </div>
+    </label>
+
+    <DSep label="Text input — focused" />
+    <label style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+      <span style={{ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)" }}>Title</span>
+      <div style={{ display: "flex", alignItems: "center", height: 42, padding: "0 12px", border: "1px solid var(--pg)", borderRadius: 9, background: "#fff", boxShadow: "0 0 0 3px rgba(47,111,181,0.16)" }}>
+        <input readOnly defaultValue="Write unit tests" style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: "var(--sans)", fontSize: 14.5, color: "var(--ink)" }} />
+      </div>
+    </label>
+
+    <DSep label="Text input — error" />
+    <label style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+      <span style={{ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)" }}>Title</span>
+      <div style={{ display: "flex", alignItems: "center", height: 42, padding: "0 12px", border: "1px solid var(--red)", borderRadius: 9, background: "#fff", boxShadow: "0 0 0 3px rgba(177,75,60,0.12)" }}>
+        <input readOnly defaultValue="" style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: "var(--sans)", fontSize: 14.5 }} />
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 7, fontFamily: "var(--mono)", fontSize: 11.5, color: "var(--red)" }}>
+        <span>⚠</span> This field is required.
+      </div>
+    </label>
+
+    <DSep label="Search input" />
+    <div style={{ display: "flex", alignItems: "center", gap: 10, height: 42, padding: "0 12px", border: "1px solid var(--rule-2)", borderRadius: 9, background: "#fff" }}>
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--muted)" strokeWidth="1.8">
+        <circle cx="7" cy="7" r="5" /><line x1="11" y1="11" x2="15" y2="15" />
+      </svg>
+      <input readOnly placeholder="Search todos…" style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: "var(--sans)", fontSize: 14.5, color: "var(--muted)" }} />
+      <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)", border: "1px solid var(--rule)", borderRadius: 5, padding: "2px 6px" }}>⌘K</span>
+    </div>
+
+    <DSep label="Checkbox" />
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {[
+        { checked: false, label: "Pending todo" },
+        { checked: true,  label: "Completed todo" },
+        { checked: false, label: "Overdue — due yesterday", muted: true },
+      ].map(({ checked, label, muted }) => (
+        <label key={label} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+          <div style={{ width: 18, height: 18, borderRadius: 5, border: `1px solid ${checked ? "var(--ink)" : "var(--rule-2)"}`, background: checked ? "var(--ink)" : "#fff", display: "grid", placeItems: "center", flexShrink: 0 }}>
+            {checked && <span style={{ color: "var(--paper)", fontSize: 11, lineHeight: 1 }}>✓</span>}
+          </div>
+          <span style={{ fontFamily: "var(--sans)", fontSize: 14.5, color: muted ? "var(--muted)" : "var(--ink)", textDecoration: checked ? "line-through" : "none", textDecorationColor: "var(--rule-2)" }}>{label}</span>
+        </label>
+      ))}
+    </div>
+
+    <DSep label="Textarea" />
+    <div style={{ padding: "10px 12px", border: "1px solid var(--rule-2)", borderRadius: 9, background: "#fff", minHeight: 70, fontFamily: "var(--sans)", fontSize: 14.5, color: "var(--muted)" }}>Notes (optional)…</div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   7. ALERTS + INLINE ERRORS
+   ───────────────────────────────────────────── */
+const ArtAlerts = () => (
+  <div style={{ padding: 24, background: "var(--paper)", fontFamily: "var(--sans)", display: "flex", flexDirection: "column", gap: 10 }}>
+    <DSep label="Alert banners" />
+    {[
+      { bg: "#edf7f0",       border: "rgba(61,122,74,.3)",   lborder: "var(--green)", icon: "✓", iconBg: "var(--green)",  title: "Todo saved",  msg: "Your changes have been saved successfully.", titleColor: "#2a5c33" },
+      { bg: "var(--pg-soft)",border: "rgba(47,111,181,.25)", lborder: "var(--pg)",    icon: "i", iconBg: "var(--pg)",     title: "Tip",         msg: "LISTEN/NOTIFY pushes live updates without polling.", titleColor: "var(--pg-deep)" },
+      { bg: "#fdf4e4",       border: "rgba(185,125,42,.3)",  lborder: "var(--amber)", icon: "⚠", iconBg: "var(--amber)",  title: "Heads up",    msg: "MATERIALIZED VIEW REFRESH adds load on high write volumes.", titleColor: "#7a520e" },
+      { bg: "#fdf0ee",       border: "rgba(177,75,60,.3)",   lborder: "var(--red)",   icon: "✕", iconBg: "var(--red)",    title: "Error",       msg: "There was a problem processing your request. Try again.", titleColor: "var(--red)" },
+    ].map(({ bg, border, lborder, icon, iconBg, title, msg, titleColor }) => (
+      <div key={title} style={{ display: "flex", gap: 12, padding: "12px 14px", background: bg, border: `1px solid ${border}`, borderLeft: `3px solid ${lborder}`, borderRadius: 10 }}>
+        <div style={{ width: 20, height: 20, borderRadius: "50%", background: iconBg, color: "#fff", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700, flexShrink: 0, marginTop: 1, fontFamily: "var(--mono)" }}>{icon}</div>
+        <div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 11.5, fontWeight: 600, color: titleColor, marginBottom: 3, letterSpacing: "0.02em" }}>{title}</div>
+          <div style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.5 }}>{msg}</div>
+        </div>
+      </div>
+    ))}
+
+    <DSep label="Inline form errors" />
+    {[
+      "This field is required.",
+      "Invalid email address.",
+      "Password must be at least 8 characters.",
+    ].map(msg => (
+      <div key={msg} style={{ display: "flex", alignItems: "center", gap: 7, fontFamily: "var(--mono)", fontSize: 11.5, color: "var(--red)" }}>
+        <span>⚠</span> {msg}
+      </div>
+    ))}
+
+    <DSep label="Django messages framework mapping" />
+    <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)", lineHeight: 2 }}>
+      {[["messages.SUCCESS", "Green banner"], ["messages.INFO", "Blue banner"], ["messages.WARNING", "Amber banner"], ["messages.ERROR", "Red banner"]].map(([k, v]) => (
+        <div key={k}><span style={{ color: "var(--ink)", marginRight: 8 }}>{k}</span>→ {v}</div>
+      ))}
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   8. EMPTY STATES
+   ───────────────────────────────────────────── */
+const ArtEmpty = () => (
+  <div style={{ padding: 24, background: "var(--paper)", fontFamily: "var(--sans)" }}>
+    <DSep label="Empty list" />
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "36px 24px", border: "1px dashed var(--rule-2)", borderRadius: 14, background: "var(--bg)", textAlign: "center" }}>
+      <div style={{ width: 46, height: 46, borderRadius: 13, background: "var(--bg-2)", border: "1px solid var(--rule-2)", display: "grid", placeItems: "center", fontFamily: "var(--mono)", fontSize: 20, color: "var(--muted)", marginBottom: 14 }}>○</div>
+      <div style={{ fontFamily: "var(--sans)", fontSize: 16, fontWeight: 600, letterSpacing: "-0.015em", marginBottom: 6, color: "var(--ink)" }}>No todos yet</div>
+      <div style={{ fontSize: 13.5, color: "var(--muted)", maxWidth: 280, lineHeight: 1.5, marginBottom: 18 }}>Create your first todo. It'll appear live when the LISTEN trigger fires.</div>
+      <button style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 38, padding: "0 16px", border: "none", borderRadius: 8, background: "var(--ink)", color: "var(--paper)", fontFamily: "var(--mono)", fontSize: 12.5, cursor: "pointer", boxShadow: "0 4px 12px rgba(20,24,29,0.25)" }}>+ New todo</button>
+    </div>
+
+    <DSep label="Empty search results" />
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 24px", border: "1px dashed var(--rule-2)", borderRadius: 14, background: "var(--bg)", textAlign: "center" }}>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 24, color: "var(--muted)", marginBottom: 10, opacity: 0.5 }}>tsvector</div>
+      <div style={{ fontFamily: "var(--sans)", fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 4, color: "var(--ink)" }}>No results for "elasticsearch"</div>
+      <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>Try different keywords. Full-text search uses English stemming.</div>
+    </div>
+
+    <DSep label="Empty queue" />
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 24px", border: "1px dashed var(--rule-2)", borderRadius: 14, background: "var(--bg)", textAlign: "center" }}>
+      <div style={{ width: 46, height: 46, borderRadius: 13, background: "var(--bg-2)", border: "1px solid var(--rule-2)", display: "grid", placeItems: "center", fontSize: 20, color: "var(--muted)", marginBottom: 14 }}>⏸</div>
+      <div style={{ fontFamily: "var(--sans)", fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", marginBottom: 4, color: "var(--ink)" }}>Queue is empty</div>
+      <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>No jobs are waiting. New todos enqueue a job via trigger.</div>
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   9. STATUS & JOB BADGES
+   ───────────────────────────────────────────── */
+const ArtBadges = () => (
+  <div style={{ padding: 24, background: "var(--paper)", fontFamily: "var(--sans)" }}>
+    <DSep label="Todo status" />
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {[
+        { label: "Pending",  bg: "var(--bg-2)",              border: "var(--rule-2)",           color: "var(--muted)",  dot: "var(--muted)", pulse: false },
+        { label: "Done",     bg: "rgba(61,122,74,0.10)",     border: "rgba(61,122,74,0.28)",    color: "var(--green)", dot: "var(--green)", pulse: false },
+        { label: "Overdue",  bg: "rgba(177,75,60,0.09)",     border: "rgba(177,75,60,0.28)",    color: "var(--red)",   dot: "var(--red)",   pulse: false },
+      ].map(({ label, bg, border, color, dot }) => (
+        <div key={label} style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "4px 10px 4px 8px", background: bg, border: `1px solid ${border}`, borderRadius: 999, fontFamily: "var(--mono)", fontSize: 11.5, fontWeight: 500, color, letterSpacing: "0.04em", minWidth: 90 }}>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: dot, display: "inline-block", flexShrink: 0 }} />
+            {label}
+          </span>
+          <span style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--muted)" }}>status-badge--{label.toLowerCase()}</span>
+        </div>
+      ))}
+    </div>
+
+    <DSep label="Job queue status" />
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {[
+        { label: "Queued",     bg: "var(--bg-2)",              border: "var(--rule-2)",           color: "var(--muted)",  dot: "var(--muted)", note: "waiting for a worker" },
+        { label: "Processing", bg: "rgba(185,125,42,0.10)",    border: "rgba(185,125,42,0.30)",   color: "var(--amber)", dot: "var(--amber)", note: "● animates (pulse-dot)", pulse: true },
+        { label: "Done",       bg: "rgba(61,122,74,0.10)",     border: "rgba(61,122,74,0.28)",    color: "var(--green)", dot: "var(--green)", note: "successful" },
+        { label: "Failed",     bg: "rgba(177,75,60,0.09)",     border: "rgba(177,75,60,0.28)",    color: "var(--red)",   dot: "var(--red)",   note: "retryable via admin" },
+      ].map(({ label, bg, border, color, dot, note, pulse }) => (
+        <div key={label} style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "4px 10px 4px 8px", background: bg, border: `1px solid ${border}`, borderRadius: 999, fontFamily: "var(--mono)", fontSize: 11.5, fontWeight: 500, color, letterSpacing: "0.04em", minWidth: 110 }}>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: dot, display: "inline-block", flexShrink: 0, animation: pulse ? "pulse-dot 1.4s ease-in-out infinite" : "none" }} />
+            {label}
+          </span>
+          <span style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--muted)" }}>{note}</span>
+        </div>
+      ))}
+    </div>
+
+    <DSep label="Feature context tags" />
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      {["tsvector + GIN", "pg_notify", "LISTEN/NOTIFY", "MATERIALIZED VIEW", "SKIP LOCKED", "asyncpg", "django.contrib.auth", "Django Channels"].map(t => (
+        <span key={t} style={{ display: "inline-flex", alignItems: "center", padding: "3px 9px", background: "var(--pg-soft)", border: "1px solid rgba(47,111,181,0.22)", borderRadius: 5, fontFamily: "var(--mono)", fontSize: 11.5, color: "var(--pg-deep)", letterSpacing: "0.03em" }}>{t}</span>
+      ))}
+    </div>
+
+    <DSep label="Phase number chips" />
+    <div style={{ display: "flex", gap: 8 }}>
+      {["P1 · Auth", "P2 · Search", "P3 · Live", "P4 · Cache", "P5 · Queue"].map(p => (
+        <span key={p} style={{ display: "inline-flex", alignItems: "center", padding: "3px 9px", background: "var(--bg-2)", border: "1px solid var(--rule-2)", borderRadius: 999, fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)", letterSpacing: "0.06em" }}>{p}</span>
+      ))}
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   NAV SHELL COMPONENT (reusable)
+   ───────────────────────────────────────────── */
+const PAGES = ["Todos", "Search", "Users", "Dashboard", "Queue", "Settings"];
+
+const GlobalNav = ({ loggedIn = false, active = "Todos" }) => (
+  <div style={{
+    width: "100%", background: "var(--paper)",
+    borderBottom: "1px solid var(--rule)",
+    boxShadow: "0 1px 0 rgba(20,24,29,0.02), 0 2px 8px rgba(20,24,29,0.05)",
+  }}>
+    <div style={{ maxWidth: 1280, margin: "0 auto", display: "flex", alignItems: "center", height: 56, padding: "0 28px", gap: 0 }}>
+
+      {/* Wordmark */}
+      <a href="#" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", marginRight: 32, flexShrink: 0 }}>
+        <div style={{ width: 28, height: 28, borderRadius: 8, background: "var(--ink)", color: "var(--paper)", display: "grid", placeItems: "center", fontFamily: "var(--mono)", fontWeight: 700, fontSize: 13 }}>pg</div>
+        <span style={{ fontFamily: "var(--mono)", fontWeight: 600, fontSize: 14.5, color: "var(--ink)", letterSpacing: "-0.01em" }}>pgstack</span>
+        <span style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--muted)", border: "1px solid var(--rule)", borderRadius: 5, padding: "1px 6px" }}>v0.1</span>
+      </a>
+
+      {/* Nav links */}
+      <nav style={{ display: "flex", alignItems: "center", gap: 2, flex: 1 }}>
+        {PAGES.map(page => {
+          const isActive = page === active;
+          return (
+            <a key={page} href="#" style={{
+              display: "inline-flex", alignItems: "center",
+              height: 36, padding: "0 12px", borderRadius: 8,
+              textDecoration: "none",
+              fontFamily: "var(--mono)", fontSize: 12.5,
+              fontWeight: isActive ? 500 : 400,
+              color: isActive ? "var(--ink)" : "var(--muted)",
+              background: isActive ? "var(--bg-2)" : "transparent",
+              border: isActive ? "1px solid var(--rule)" : "1px solid transparent",
+              position: "relative",
+            }}>
+              {page}
+              {isActive && (
+                <span style={{ position: "absolute", bottom: -1, left: "50%", transform: "translateX(-50%)", width: 20, height: 2, borderRadius: 999, background: "var(--pg)" }} />
+              )}
+            </a>
+          );
+        })}
+      </nav>
+
+      {/* Auth */}
+      {loggedIn ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 7, background: "var(--bg-2)", border: "1px solid var(--rule-2)", display: "grid", placeItems: "center", fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--ink-2)", fontWeight: 600 }}>AL</div>
+            <span style={{ fontFamily: "var(--mono)", fontSize: 12.5, color: "var(--ink-2)" }}>ada</span>
+          </div>
+          <div style={{ width: 1, height: 18, background: "var(--rule)" }} />
+          <form method="post" action="/accounts/logout/" style={{ margin: 0 }}>
+            <button type="submit" style={{ display: "inline-flex", alignItems: "center", height: 32, padding: "0 13px", border: "1px solid var(--rule-2)", borderRadius: 7, background: "var(--paper)", color: "var(--ink-2)", fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer", boxShadow: "0 1px 2px rgba(20,24,29,0.04)" }}>Log out</button>
+          </form>
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <a href="/accounts/login/" style={{ display: "inline-flex", alignItems: "center", height: 32, padding: "0 13px", border: "1px solid transparent", borderRadius: 7, textDecoration: "none", color: "var(--muted)", fontFamily: "var(--mono)", fontSize: 12 }}>Log in</a>
+          <a href="/accounts/register/" style={{ display: "inline-flex", alignItems: "center", height: 32, padding: "0 14px", border: "none", borderRadius: 7, background: "var(--ink)", color: "var(--paper)", textDecoration: "none", fontFamily: "var(--mono)", fontSize: 12, boxShadow: "0 1px 0 rgba(255,255,255,0.06) inset, 0 2px 6px rgba(20,24,29,0.22)" }}>Register</a>
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   10. PAGE SHELL — LOGGED IN
+   ───────────────────────────────────────────── */
+const ShellLoggedIn = () => (
+  <div style={{ width: 1280, background: "var(--bg)", fontFamily: "var(--sans)" }}>
+    <GlobalNav loggedIn={true} active="Todos" />
+    <div style={{ maxWidth: 1280, margin: "0 auto", padding: "32px 28px" }}>
+
+      {/* page header */}
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", paddingBottom: 20, marginBottom: 28, borderBottom: "1px solid var(--rule)" }}>
+        <div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 8 }}>Phase 1 · django.contrib.auth</div>
+          <h1 style={{ margin: 0, fontFamily: "var(--sans)", fontWeight: 600, fontSize: 34, letterSpacing: "-0.025em", color: "var(--ink)", lineHeight: 1.05 }}>Todos</h1>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, height: 42, padding: "0 12px", border: "1px solid var(--rule-2)", borderRadius: 9, background: "#fff" }}>
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--muted)" strokeWidth="1.8"><circle cx="7" cy="7" r="5" /><line x1="11" y1="11" x2="15" y2="15" /></svg>
+            <span style={{ fontFamily: "var(--sans)", fontSize: 14, color: "var(--muted)" }}>Filter todos…</span>
+          </div>
+          <button style={{ display: "inline-flex", alignItems: "center", gap: 8, height: 42, padding: "0 16px", border: "none", borderRadius: 9, background: "var(--ink)", color: "var(--paper)", fontFamily: "var(--mono)", fontSize: 13, cursor: "pointer", boxShadow: "0 4px 12px rgba(20,24,29,0.25)" }}>+ New todo</button>
+        </div>
+      </div>
+
+      {/* status filter tabs */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 22 }}>
+        {[
+          { label: "All", active: true },
+          { label: "Pending", color: "var(--muted)" },
+          { label: "Done", color: "var(--green)" },
+          { label: "Overdue", color: "var(--red)" },
+        ].map(({ label, active, color }) => (
+          <button key={label} style={{
+            display: "inline-flex", alignItems: "center", gap: 7,
+            height: 32, padding: "0 13px",
+            border: active ? "1px solid var(--rule)" : "1px solid transparent",
+            borderRadius: 8,
+            background: active ? "var(--paper)" : "transparent",
+            color: active ? "var(--ink)" : "var(--muted)",
+            fontFamily: "var(--mono)", fontSize: 12, cursor: "pointer",
+            boxShadow: active ? "0 1px 2px rgba(20,24,29,0.05)" : "none",
+          }}>
+            {color && <span style={{ width: 6, height: 6, borderRadius: "50%", background: color, display: "inline-block" }} />}
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* placeholder content area */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {[
+          { title: "Write tests for the SKIP LOCKED worker", status: "Pending",  due: "today" },
+          { title: "Add ts_headline highlighting to search UI", status: "Done",    due: "yesterday" },
+          { title: "Benchmark GIN vs. GIST index", status: "Overdue",  due: "Mon" },
+          { title: "Document pg_notify trigger in README", status: "Pending",  due: "Fri" },
+        ].map(({ title, status, due }) => {
+          const statusStyles = {
+            Pending: { bg: "var(--bg-2)", border: "var(--rule-2)", color: "var(--muted)", dot: "var(--muted)" },
+            Done:    { bg: "rgba(61,122,74,.10)", border: "rgba(61,122,74,.28)", color: "var(--green)", dot: "var(--green)" },
+            Overdue: { bg: "rgba(177,75,60,.09)", border: "rgba(177,75,60,.28)", color: "var(--red)", dot: "var(--red)" },
+          }[status];
+          return (
+            <div key={title} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 16px", border: "1px solid var(--rule)", borderRadius: 10, background: "var(--paper)", boxShadow: "0 1px 2px rgba(20,24,29,0.04)" }}>
+              <div style={{ width: 18, height: 18, borderRadius: 5, border: "1px solid var(--rule-2)", background: status === "Done" ? "var(--ink)" : "#fff", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                {status === "Done" && <span style={{ color: "var(--paper)", fontSize: 11 }}>✓</span>}
+              </div>
+              <span style={{ flex: 1, fontFamily: "var(--sans)", fontSize: 14.5, color: status === "Done" ? "var(--muted)" : "var(--ink)", textDecoration: status === "Done" ? "line-through" : "none", textDecorationColor: "var(--rule-2)" }}>{title}</span>
+              <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)" }}>due {due}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 9px 3px 7px", background: statusStyles.bg, border: `1px solid ${statusStyles.border}`, borderRadius: 999, fontFamily: "var(--mono)", fontSize: 11, color: statusStyles.color }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: statusStyles.dot }} />
+                {status}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   11. PAGE SHELL — LOGGED OUT
+   ───────────────────────────────────────────── */
+const ShellLoggedOut = () => (
+  <div style={{ width: 1280, background: "var(--bg)", fontFamily: "var(--sans)" }}>
+    <GlobalNav loggedIn={false} active="Todos" />
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 40px 60px", gap: 16, textAlign: "center" }}>
+      <div style={{ width: 52, height: 52, borderRadius: 14, background: "var(--ink)", color: "var(--paper)", display: "grid", placeItems: "center", fontFamily: "var(--mono)", fontWeight: 700, fontSize: 18 }}>pg</div>
+      <div>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 10 }}>pgstack · demo app</div>
+        <h2 style={{ margin: 0, fontFamily: "var(--sans)", fontWeight: 600, fontSize: 30, letterSpacing: "-0.025em", color: "var(--ink)", lineHeight: 1.1 }}>Sign in to continue</h2>
+      </div>
+      <p style={{ margin: 0, fontSize: 15, color: "var(--muted)", maxWidth: 340, lineHeight: 1.55 }}>
+        Log in or register to explore todos, live search, the materialized dashboard, and job queue.
+      </p>
+      <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+        <a href="/accounts/login/" style={{ display: "inline-flex", alignItems: "center", height: 42, padding: "0 22px", border: "1px solid var(--rule-2)", borderRadius: 9, textDecoration: "none", color: "var(--ink-2)", fontFamily: "var(--mono)", fontSize: 13, background: "var(--paper)", boxShadow: "0 1px 2px rgba(20,24,29,0.06)" }}>Log in</a>
+        <a href="/accounts/register/" style={{ display: "inline-flex", alignItems: "center", height: 42, padding: "0 22px", border: "none", borderRadius: 9, textDecoration: "none", color: "var(--paper)", fontFamily: "var(--mono)", fontSize: 13, background: "var(--ink)", boxShadow: "0 4px 12px rgba(20,24,29,0.25)" }}>Register</a>
+      </div>
+      <div style={{ marginTop: 32, padding: "14px 20px", border: "1px solid var(--rule)", borderLeft: "3px solid var(--pg)", borderRadius: 10, background: "var(--paper)", fontFamily: "var(--mono)", fontSize: 12, color: "var(--muted)", maxWidth: 500, textAlign: "left", lineHeight: 1.7 }}>
+        <span style={{ color: "var(--pg-deep)", fontWeight: 500 }}>Auth note — </span>
+        Login and registration are handled by <span style={{ color: "var(--ink)" }}>django.contrib.auth</span>. Sessions are stored in Postgres via <span style={{ color: "var(--ink)" }}>django.contrib.sessions</span>. No third-party auth providers.
+      </div>
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   ROOT
+   ───────────────────────────────────────────── */
+const App = () => (
+  <DesignCanvas>
+
+    <DCSection id="tokens" title="01 · Design Tokens" subtitle="Colors · Dark mode · Typography · Spacing — copy into base.css">
+      <DCArtboard id="colors"   label="Color palette"                 width={740}><ArtColors /></DCArtboard>
+      <DCArtboard id="dark"     label="Dark mode tokens"              width={520}><ArtDark /></DCArtboard>
+      <DCArtboard id="type"     label="Typography scale"              width={680}><ArtType /></DCArtboard>
+      <DCArtboard id="spacing"  label="Spacing · Radius · Shadows"    width={460}><ArtSpacing /></DCArtboard>
+    </DCSection>
+
+    <DCSection id="components" title="02 · Components" subtitle="Buttons · Form inputs · Alerts · Empty states">
+      <DCArtboard id="buttons"  label="Buttons"                        width={560}><ArtButtons /></DCArtboard>
+      <DCArtboard id="inputs"   label="Form inputs"                    width={460}><ArtInputs /></DCArtboard>
+      <DCArtboard id="alerts"   label="Alert banners · Inline errors"  width={540}><ArtAlerts /></DCArtboard>
+      <DCArtboard id="empty"    label="Empty states"                   width={480}><ArtEmpty /></DCArtboard>
+    </DCSection>
+
+    <DCSection id="badges" title="03 · Badges & Pills" subtitle="Todo status · Job queue · Feature tags · Phase chips">
+      <DCArtboard id="allbadges" label="All badges & pills" width={560}><ArtBadges /></DCArtboard>
+    </DCSection>
+
+    <DCSection id="shell" title="04 · Global Nav Shell" subtitle="base.html — used by every Django template">
+      <DCArtboard id="shell-in"  label="Logged in — Todos active"  width={1280}><ShellLoggedIn /></DCArtboard>
+      <DCArtboard id="shell-out" label="Logged out — gate view"    width={1280}><ShellLoggedOut /></DCArtboard>
+    </DCSection>
+
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

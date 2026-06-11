@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>pgstack — Search &amp; Users Pages</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body { font-family: "Geist", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  :root {
+    --bg:       #f3efe6;
+    --bg-2:     #ebe6da;
+    --paper:    #faf7f0;
+    --ink:      #14181d;
+    --ink-2:    #2a2f37;
+    --muted:    #6b6f78;
+    --rule:     #d9d3c4;
+    --rule-2:   #c8c1ae;
+    --pg:       #2f6fb5;
+    --pg-deep:  #1f4d80;
+    --pg-soft:  #e6eef8;
+    --amber:    #b97d2a;
+    --green:    #3d7a4a;
+    --red:      #b14b3c;
+    --sans:     "Geist", ui-sans-serif, system-ui, sans-serif;
+    --mono:     "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+/* ─────────────────────────────────────────────
+   SHARED: GLOBAL NAV
+   ───────────────────────────────────────────── */
+const PAGES = ["Todos", "Search", "Users", "Dashboard", "Queue", "Settings"];
+
+const GlobalNav = ({ active = "Search", mobile = false }) => (
+  <div style={{
+    width: "100%", background: "var(--paper)",
+    borderBottom: "1px solid var(--rule)",
+    boxShadow: "0 1px 0 rgba(20,24,29,.02), 0 2px 8px rgba(20,24,29,.05)",
+    flexShrink: 0,
+  }}>
+    <div style={{
+      display: "flex", alignItems: "center",
+      height: mobile ? 50 : 56,
+      padding: mobile ? "0 18px" : "0 28px",
+    }}>
+      {/* Wordmark */}
+      <a href="#" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", flexShrink: 0, marginRight: mobile ? 0 : 32 }}>
+        <div style={{ width: 28, height: 28, borderRadius: 7, background: "var(--ink)", color: "var(--paper)", display: "grid", placeItems: "center", fontFamily: "var(--mono)", fontWeight: 700, fontSize: 13 }}>pg</div>
+        <span style={{ fontFamily: "var(--mono)", fontWeight: 600, fontSize: 14.5, color: "var(--ink)", letterSpacing: "-0.01em" }}>pgstack</span>
+        {!mobile && <span style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--muted)", border: "1px solid var(--rule)", borderRadius: 5, padding: "1px 6px" }}>v0.1</span>}
+      </a>
+
+      {/* Nav links */}
+      {!mobile && (
+        <nav style={{ display: "flex", alignItems: "center", gap: 2, flex: 1 }}>
+          {PAGES.map(page => {
+            const isActive = page === active;
+            return (
+              <a key={page} href="#" style={{
+                display: "inline-flex", alignItems: "center",
+                height: 36, padding: "0 12px", borderRadius: 8,
+                textDecoration: "none",
+                fontFamily: "var(--mono)", fontSize: 12.5,
+                fontWeight: isActive ? 500 : 400,
+                color: isActive ? "var(--ink)" : "var(--muted)",
+                background: isActive ? "var(--bg-2)" : "transparent",
+                border: isActive ? "1px solid var(--rule)" : "1px solid transparent",
+                position: "relative",
+              }}>
+                {page}
+                {isActive && <span style={{ position: "absolute", bottom: -1, left: "50%", transform: "translateX(-50%)", width: 20, height: 2, borderRadius: 999, background: "var(--pg)" }} />}
+              </a>
+            );
+          })}
+        </nav>
+      )}
+
+      {mobile && <div style={{ flex: 1 }} />}
+
+      {/* Auth — logged in */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 26, height: 26, borderRadius: 7, background: "var(--bg-2)", border: "1px solid var(--rule-2)", display: "grid", placeItems: "center", fontFamily: "var(--mono)", fontSize: 10, color: "var(--ink-2)", fontWeight: 600 }}>AL</div>
+          {!mobile && <span style={{ fontFamily: "var(--mono)", fontSize: 12.5, color: "var(--ink-2)" }}>ada</span>}
+        </div>
+        <div style={{ width: 1, height: 16, background: "var(--rule)" }} />
+        <button style={{ display: "inline-flex", alignItems: "center", height: 30, padding: "0 11px", border: "1px solid var(--rule-2)", borderRadius: 7, background: "var(--paper)", color: "var(--ink-2)", fontFamily: "var(--mono)", fontSize: 11.5, cursor: "pointer" }}>
+          {mobile ? "↩" : "Log out"}
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   SHARED: FTS HIGHLIGHT + SNIPPET
+   ───────────────────────────────────────────── */
+const Hl = ({ children }) => (
+  <span style={{ background: "#fef3c7", color: "#7c4500", fontWeight: 500, padding: "0 2px", borderRadius: 3 }}>{children}</span>
+);
+
+/* Snippet rendered from an array of {text, hl} parts */
+const Snippet = ({ parts }) => (
+  <p style={{ margin: 0, fontSize: 13.5, color: "var(--muted)", lineHeight: 1.55, fontFamily: "var(--sans)" }}>
+    {parts.map((p, i) => p.hl ? <Hl key={i}>{p.text}</Hl> : <span key={i}>{p.text}</span>)}
+  </p>
+);
+
+/* ─────────────────────────────────────────────
+   SHARED: STATUS BADGE
+   ───────────────────────────────────────────── */
+const StatusBadge = ({ status }) => {
+  const map = {
+    Pending: { bg: "var(--bg-2)",            border: "var(--rule-2)",           color: "var(--muted)",  dot: "var(--muted)" },
+    Done:    { bg: "rgba(61,122,74,.10)",     border: "rgba(61,122,74,.28)",     color: "var(--green)", dot: "var(--green)" },
+    Overdue: { bg: "rgba(177,75,60,.09)",     border: "rgba(177,75,60,.28)",     color: "var(--red)",   dot: "var(--red)"   },
+  };
+  const s = map[status] || map.Pending;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 9px 3px 7px", background: s.bg, border: `1px solid ${s.border}`, borderRadius: 999, fontFamily: "var(--mono)", fontSize: 11, color: s.color, letterSpacing: "0.04em", flexShrink: 0 }}>
+      <span style={{ width: 6, height: 6, borderRadius: "50%", background: s.dot }} />{status}
+    </span>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   SHARED: SEARCH FORM (prominent)
+   ───────────────────────────────────────────── */
+const SearchBar = ({ value = "", placeholder = "Search todos…", buttonLabel = "Search", compact = false }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <div style={{
+      flex: 1, display: "flex", alignItems: "center", gap: 10,
+      height: compact ? 42 : 50,
+      padding: "0 14px",
+      background: "#fff",
+      border: value ? "1px solid var(--pg)" : "1px solid var(--rule-2)",
+      borderRadius: 10,
+      boxShadow: value ? "0 0 0 3px rgba(47,111,181,.14)" : "0 1px 3px rgba(20,24,29,.06)",
+    }}>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--muted)" strokeWidth="1.8" style={{ flexShrink: 0 }}>
+        <circle cx="7" cy="7" r="5" /><line x1="11" y1="11" x2="15" y2="15" />
+      </svg>
+      <input readOnly defaultValue={value} placeholder={placeholder} style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: "var(--sans)", fontSize: compact ? 14.5 : 16, color: value ? "var(--ink)" : "var(--muted)" }} />
+      {value && (
+        <span style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--muted)", border: "1px solid var(--rule)", borderRadius: 5, padding: "2px 7px", flexShrink: 0 }}>↩ enter</span>
+      )}
+    </div>
+    <button style={{
+      display: "inline-flex", alignItems: "center", justifyContent: "center",
+      height: compact ? 42 : 50, padding: "0 20px",
+      border: "none", borderRadius: 10,
+      background: "var(--ink)", color: "var(--paper)",
+      fontFamily: "var(--mono)", fontSize: compact ? 13 : 14, fontWeight: 500,
+      cursor: "pointer", flexShrink: 0,
+      boxShadow: "0 1px 0 rgba(255,255,255,.06) inset, 0 4px 12px rgba(20,24,29,.28)",
+    }}>{buttonLabel}</button>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   SHARED: PAGE HEADER
+   ───────────────────────────────────────────── */
+const PageHeader = ({ kicker, title, sub, contentWidth = 720, mobile = false }) => (
+  <div style={{ maxWidth: contentWidth, margin: "0 auto", padding: mobile ? "28px 20px 0" : "40px 28px 0" }}>
+    {kicker && (
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 10 }}>{kicker}</div>
+    )}
+    <h1 style={{ margin: 0, fontFamily: "var(--sans)", fontWeight: 600, fontSize: mobile ? 26 : 32, letterSpacing: "-0.025em", color: "var(--ink)", lineHeight: 1.06 }}>{title}</h1>
+    {sub && <p style={{ margin: "8px 0 0", fontSize: mobile ? 13.5 : 15, color: "var(--muted)", lineHeight: 1.5 }}>{sub}</p>}
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   SHARED: RESULT ITEM
+   ───────────────────────────────────────────── */
+const SearchResultItem = ({ title, snippet, meta, last = false }) => (
+  <div style={{ padding: "16px 0", borderBottom: last ? "none" : "1px solid var(--rule)" }}>
+    <a href="#" style={{ textDecoration: "none" }}>
+      <div style={{ fontFamily: "var(--sans)", fontWeight: 600, fontSize: 15.5, color: "var(--ink)", letterSpacing: "-0.01em", marginBottom: 5, lineHeight: 1.3 }}>{title}</div>
+      <Snippet parts={snippet} />
+      {meta && <div style={{ marginTop: 6, fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)" }}>{meta}</div>}
+    </a>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   SHARED: RESULTS CONTAINER
+   ───────────────────────────────────────────── */
+const ResultsBox = ({ label, count, children }) => (
+  <div style={{ marginTop: 24 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)" }}>{label}</div>
+      {count !== undefined && (
+        <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)", background: "var(--bg-2)", border: "1px solid var(--rule-2)", borderRadius: 999, padding: "2px 9px" }}>{count} result{count !== 1 ? "s" : ""}</div>
+      )}
+    </div>
+    <div style={{ background: "var(--paper)", border: "1px solid var(--rule-2)", borderRadius: 12, padding: "0 18px", boxShadow: "0 1px 0 rgba(20,24,29,.02), 0 8px 24px -16px rgba(20,24,29,.14)" }}>
+      {children}
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   SHARED: EMPTY STATE
+   ───────────────────────────────────────────── */
+const EmptySearch = ({ query, noun = "results" }) => (
+  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 24px", border: "1px dashed var(--rule-2)", borderRadius: 14, background: "var(--paper)", textAlign: "center", marginTop: 24 }}>
+    <div style={{ fontFamily: "var(--mono)", fontSize: 22, color: "var(--muted)", marginBottom: 12, opacity: 0.5 }}>tsvector</div>
+    <div style={{ fontFamily: "var(--sans)", fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ink)", marginBottom: 4 }}>
+      No {noun} for <span style={{ fontFamily: "var(--mono)", background: "var(--bg-2)", border: "1px solid var(--rule-2)", borderRadius: 5, padding: "1px 8px", fontSize: 14 }}>"{query}"</span>
+    </div>
+    <div style={{ fontSize: 13.5, color: "var(--muted)", lineHeight: 1.55 }}>Try different keywords. Full-text search uses English stemming — plurals and verb forms match.</div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   SHARED: TECH TAG ROW
+   ───────────────────────────────────────────── */
+const TechTag = ({ label }) => (
+  <span style={{ background: "var(--pg-soft)", border: "1px solid rgba(47,111,181,.22)", color: "var(--pg-deep)", borderRadius: 5, padding: "2px 8px", fontFamily: "var(--mono)", fontSize: 11 }}>{label}</span>
+);
+const TechRow = ({ tags, note }) => (
+  <div style={{ marginTop: 20, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)" }}>
+    {tags.map(t => <TechTag key={t} label={t} />)}
+    {note && <><span>·</span><span>{note}</span></>}
+  </div>
+);
+
+/* ═══════════════════════════════════════════════
+   PAGE A — SEARCH TODOS (/search/)
+   ═══════════════════════════════════════════════ */
+
+/* A1: Initial — no query */
+const SearchTodosInitial = () => (
+  <div style={{ width: 1280, background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+    <GlobalNav active="Search" />
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "56px 28px 48px", width: "100%" }}>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 10 }}>Phase 2 · tsvector + GIN + ts_headline</div>
+      <h1 style={{ margin: "0 0 6px", fontFamily: "var(--sans)", fontWeight: 600, fontSize: 32, letterSpacing: "-0.025em", color: "var(--ink)" }}>Search</h1>
+      <p style={{ margin: "0 0 28px", fontSize: 15, color: "var(--muted)", lineHeight: 1.5 }}>Full-text search across all todos — ranked by relevance, highlighted by <span style={{ fontFamily: "var(--mono)", fontSize: 13.5, color: "var(--ink-2)" }}>ts_headline</span>.</p>
+      <SearchBar placeholder="Search todos…" />
+      {/* Idle hint */}
+      <div style={{ marginTop: 20, display: "flex", gap: 10, alignItems: "center" }}>
+        <div style={{ flex: 1, height: 1, background: "var(--rule)" }} />
+        <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)", whiteSpace: "nowrap" }}>type a term and press enter</span>
+        <div style={{ flex: 1, height: 1, background: "var(--rule)" }} />
+      </div>
+      {/* Example chips */}
+      <div style={{ marginTop: 16, display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {["postgres", "LISTEN", "GIN index", "queue", "celery"].map(t => (
+          <span key={t} style={{ fontFamily: "var(--mono)", fontSize: 12, color: "var(--ink-2)", background: "var(--paper)", border: "1px solid var(--rule-2)", borderRadius: 999, padding: "4px 11px", cursor: "pointer" }}>{t}</span>
+        ))}
+      </div>
+      <TechRow tags={["tsvector + GIN", "ts_rank", "ts_headline"]} note="English stemming · GIN index on search_vector column" />
+    </div>
+  </div>
+);
+
+/* A2: Results — query: "postgres" */
+const SearchTodosResults = () => (
+  <div style={{ width: 1280, background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+    <GlobalNav active="Search" />
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 28px 48px", width: "100%" }}>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 10 }}>Phase 2 · tsvector + GIN + ts_headline</div>
+      <h1 style={{ margin: "0 0 22px", fontFamily: "var(--sans)", fontWeight: 600, fontSize: 32, letterSpacing: "-0.025em", color: "var(--ink)" }}>Search</h1>
+      <SearchBar value="postgres" />
+      <ResultsBox label={`Results for "postgres"`} count={3}>
+        <SearchResultItem
+          title="Set up PostgreSQL full-text search GIN index"
+          snippet={[
+            {text:"…configure a GIN index on the "},
+            {text:"postgres",hl:true},
+            {text:" tsvector column to enable fast full-text search across all todo titles and notes. Run "},
+            {text:"REINDEX",hl:false},
+            {text:" after bulk inserts…"},
+          ]}
+          meta="ada · 3 days ago · Done"
+        />
+        <SearchResultItem
+          title="Benchmark tsvector vs Elasticsearch performance"
+          snippet={[
+            {text:"…comparing "},
+            {text:"postgres",hl:true},
+            {text:" native FTS against a dedicated Elasticsearch cluster using the same dataset of 50k todos — "},
+            {text:"postgres",hl:true},
+            {text:" wins below ~1M rows…"},
+          ]}
+          meta="ada · 1 week ago · Pending"
+        />
+        <SearchResultItem
+          last
+          title="Document the LISTEN/NOTIFY real-time demo"
+          snippet={[
+            {text:"…the "},
+            {text:"postgres",hl:true},
+            {text:" LISTEN/NOTIFY mechanism pushes row changes as JSON to Django Channels consumers, replacing Redis Pub/Sub with zero extra infrastructure…"},
+          ]}
+          meta="alice · 2 days ago · Done"
+        />
+      </ResultsBox>
+      <TechRow tags={["ts_rank","ts_headline"]} note="SearchRank + SearchHeadline · ordered by -rank" />
+    </div>
+  </div>
+);
+
+/* A3: Empty results */
+const SearchTodosEmpty = () => (
+  <div style={{ width: 1280, background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+    <GlobalNav active="Search" />
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 28px 48px", width: "100%" }}>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 10 }}>Phase 2 · tsvector + GIN + ts_headline</div>
+      <h1 style={{ margin: "0 0 22px", fontFamily: "var(--sans)", fontWeight: 600, fontSize: 32, letterSpacing: "-0.025em", color: "var(--ink)" }}>Search</h1>
+      <SearchBar value="elasticsearch" />
+      <EmptySearch query="elasticsearch" />
+      <TechRow tags={["tsvector + GIN"]} note="Zero rows matched the tsquery — no results rendered" />
+    </div>
+  </div>
+);
+
+/* A4: Mobile results */
+const SearchTodosMobile = () => (
+  <div style={{ width: 390, background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+    <GlobalNav active="Search" mobile />
+    <div style={{ padding: "24px 18px 32px" }}>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 8 }}>Phase 2 · tsvector</div>
+      <h1 style={{ margin: "0 0 16px", fontFamily: "var(--sans)", fontWeight: 600, fontSize: 26, letterSpacing: "-0.02em", color: "var(--ink)" }}>Search</h1>
+      <SearchBar value="postgres" compact />
+      <div style={{ marginTop: 18 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--muted)" }}>Results</div>
+          <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--muted)", background: "var(--bg-2)", border: "1px solid var(--rule-2)", borderRadius: 999, padding: "2px 8px" }}>3 results</div>
+        </div>
+        <div style={{ background: "var(--paper)", border: "1px solid var(--rule-2)", borderRadius: 12, padding: "0 16px", boxShadow: "0 4px 16px -12px rgba(20,24,29,.2)" }}>
+          {[
+            { title:"Set up PostgreSQL full-text search GIN index", snippet:[{text:"…configure a GIN index on the "},{text:"postgres",hl:true},{text:" tsvector column to enable fast FTS across todos…"}] },
+            { title:"Benchmark tsvector vs Elasticsearch", snippet:[{text:"…comparing "},{text:"postgres",hl:true},{text:" native FTS against Elasticsearch using 50k todos…"}] },
+            { title:"Document the LISTEN/NOTIFY demo", snippet:[{text:"…the "},{text:"postgres",hl:true},{text:" LISTEN/NOTIFY mechanism pushes row changes to Channels…"}], last:true },
+          ].map((r, i) => (
+            <div key={i} style={{ padding: "14px 0", borderBottom: r.last ? "none" : "1px solid var(--rule)" }}>
+              <div style={{ fontFamily: "var(--sans)", fontWeight: 600, fontSize: 14.5, color: "var(--ink)", letterSpacing: "-0.01em", marginBottom: 4, lineHeight: 1.35 }}>{r.title}</div>
+              <Snippet parts={r.snippet} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+/* ═══════════════════════════════════════════════
+   PAGE B — FIND USERS (/users/search/)
+   ═══════════════════════════════════════════════ */
+
+/* B1: Results — query: "ali" */
+const FindUsersResults = () => (
+  <div style={{ width: 1280, background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+    <GlobalNav active="Users" />
+    <div style={{ maxWidth: 640, margin: "0 auto", padding: "40px 28px 48px", width: "100%" }}>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 10 }}>Phase 1 · django.contrib.auth · login required</div>
+      <h1 style={{ margin: "0 0 6px", fontFamily: "var(--sans)", fontWeight: 600, fontSize: 32, letterSpacing: "-0.025em", color: "var(--ink)" }}>Find users</h1>
+      <p style={{ margin: "0 0 22px", fontSize: 15, color: "var(--muted)", lineHeight: 1.5 }}>Search by username to open their public Todo list.</p>
+      <SearchBar value="ali" placeholder="Search by username…" buttonLabel="Find" />
+      <ResultsBox label={`Users matching "ali"`} count={3}>
+        {[
+          { username: "alice",  name: "Alice K.",   todos: 12 },
+          { username: "alix",   name: "Alix M.",    todos: 4  },
+          { username: "alicia", name: "Alicia R.",  todos: 7  },
+        ].map(({ username, name, todos }, i) => (
+          <div key={username} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: i === 2 ? "none" : "1px solid var(--rule)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--bg-2)", border: "1px solid var(--rule-2)", display: "grid", placeItems: "center", fontFamily: "var(--mono)", fontSize: 11, color: "var(--ink-2)", fontWeight: 600 }}>
+                {username.slice(0,2).toUpperCase()}
+              </div>
+              <div>
+                <a href="#" style={{ textDecoration: "none", fontFamily: "var(--sans)", fontWeight: 600, fontSize: 15, color: "var(--ink)", letterSpacing: "-0.01em", display: "block" }}>{username}</a>
+                <div style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)", marginTop: 1 }}>{name} · {todos} public todos</div>
+              </div>
+            </div>
+            <a href="#" style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 32, padding: "0 13px", border: "1px solid var(--rule-2)", borderRadius: 7, textDecoration: "none", fontFamily: "var(--mono)", fontSize: 12, color: "var(--ink-2)", background: "var(--paper)" }}>
+              View list <span style={{ opacity: 0.5 }}>→</span>
+            </a>
+          </div>
+        ))}
+      </ResultsBox>
+      <TechRow tags={["django.contrib.auth"]} note="User.objects.filter(username__icontains=q)" />
+    </div>
+  </div>
+);
+
+/* B2: Empty results */
+const FindUsersEmpty = () => (
+  <div style={{ width: 1280, background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+    <GlobalNav active="Users" />
+    <div style={{ maxWidth: 640, margin: "0 auto", padding: "40px 28px 48px", width: "100%" }}>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 10 }}>Phase 1 · django.contrib.auth · login required</div>
+      <h1 style={{ margin: "0 0 6px", fontFamily: "var(--sans)", fontWeight: 600, fontSize: 32, letterSpacing: "-0.025em", color: "var(--ink)" }}>Find users</h1>
+      <p style={{ margin: "0 0 22px", fontSize: 15, color: "var(--muted)", lineHeight: 1.5 }}>Search by username to open their public Todo list.</p>
+      <SearchBar value="xyzxyz" placeholder="Search by username…" buttonLabel="Find" />
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 24px", border: "1px dashed var(--rule-2)", borderRadius: 14, background: "var(--paper)", textAlign: "center", marginTop: 24 }}>
+        <div style={{ fontFamily: "var(--mono)", fontSize: 22, color: "var(--muted)", marginBottom: 12, opacity: 0.5 }}>○</div>
+        <div style={{ fontFamily: "var(--sans)", fontSize: 16, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--ink)", marginBottom: 4 }}>
+          No users match <span style={{ fontFamily: "var(--mono)", background: "var(--bg-2)", border: "1px solid var(--rule-2)", borderRadius: 5, padding: "1px 8px", fontSize: 14 }}>«xyzxyz»</span>
+        </div>
+        <div style={{ fontSize: 13.5, color: "var(--muted)", lineHeight: 1.55 }}>Try a partial username — search matches anywhere in the username.</div>
+      </div>
+    </div>
+  </div>
+);
+
+/* ═══════════════════════════════════════════════
+   PAGE C — PUBLIC TODO LIST (/users/{username}/todos/)
+   ═══════════════════════════════════════════════ */
+
+const ALICE_TODOS = [
+  { title: "Write documentation for the LISTEN/NOTIFY demo",     status: "Done",    ago: "2 days ago" },
+  { title: "Set up PostgreSQL full-text search GIN index",       status: "Done",    ago: "3 days ago" },
+  { title: "Benchmark tsvector vs Elasticsearch performance",    status: "Pending", ago: "1 week ago" },
+];
+
+/* Scoped search form (compact, inside list page) */
+const ScopedSearchBar = ({ value = "", placeholder = "Search this list…" }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
+    <div style={{
+      flex: 1, display: "flex", alignItems: "center", gap: 9,
+      height: 40, padding: "0 12px",
+      background: "#fff",
+      border: value ? "1px solid var(--pg)" : "1px solid var(--rule-2)",
+      borderRadius: 9,
+      boxShadow: value ? "0 0 0 3px rgba(47,111,181,.12)" : "none",
+    }}>
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="var(--muted)" strokeWidth="1.8" style={{ flexShrink: 0 }}>
+        <circle cx="7" cy="7" r="5" /><line x1="11" y1="11" x2="15" y2="15" />
+      </svg>
+      <input readOnly defaultValue={value} placeholder={placeholder} style={{ flex: 1, border: "none", outline: "none", background: "transparent", fontFamily: "var(--sans)", fontSize: 14, color: value ? "var(--ink)" : "var(--muted)" }} />
+    </div>
+    <button style={{ display: "inline-flex", alignItems: "center", height: 40, padding: "0 16px", border: "none", borderRadius: 9, background: "var(--ink)", color: "var(--paper)", fontFamily: "var(--mono)", fontSize: 12.5, cursor: "pointer", boxShadow: "0 2px 8px rgba(20,24,29,.22)", flexShrink: 0 }}>Search</button>
+  </div>
+);
+
+/* C1: Alice's list — default view */
+const AlicePublicDefault = () => (
+  <div style={{ width: 1280, background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+    <GlobalNav active="Users" />
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 28px 48px", width: "100%" }}>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 10 }}>Public list · /users/alice/todos/</div>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
+        <div>
+          <h1 style={{ margin: "0 0 5px", fontFamily: "var(--sans)", fontWeight: 600, fontSize: 32, letterSpacing: "-0.025em", color: "var(--ink)" }}>alice's todos</h1>
+          <p style={{ margin: 0, fontSize: 14.5, color: "var(--muted)" }}>Public list for <span style={{ fontFamily: "var(--mono)", color: "var(--ink-2)" }}>alice</span>.</p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--bg-2)", border: "1px solid var(--rule-2)", display: "grid", placeItems: "center", fontFamily: "var(--mono)", fontSize: 13, color: "var(--ink-2)", fontWeight: 600 }}>AL</div>
+          <div>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 12.5, color: "var(--ink)", fontWeight: 500 }}>alice</div>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--muted)" }}>3 todos · 2 done</div>
+          </div>
+        </div>
+      </div>
+
+      <ScopedSearchBar placeholder="Search alice's todos…" />
+
+      {/* Todo list */}
+      <div style={{ background: "var(--paper)", border: "1px solid var(--rule-2)", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 0 rgba(20,24,29,.02), 0 8px 24px -16px rgba(20,24,29,.14)" }}>
+        {ALICE_TODOS.map(({ title, status, ago }, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 18px", borderBottom: i === 2 ? "none" : "1px solid var(--rule)" }}>
+            <div style={{ width: 18, height: 18, borderRadius: 5, border: `1px solid ${status === "Done" ? "var(--ink)" : "var(--rule-2)"}`, background: status === "Done" ? "var(--ink)" : "#fff", display: "grid", placeItems: "center", flexShrink: 0 }}>
+              {status === "Done" && <span style={{ color: "var(--paper)", fontSize: 10 }}>✓</span>}
+            </div>
+            <span style={{ flex: 1, fontFamily: "var(--sans)", fontSize: 14.5, color: status === "Done" ? "var(--muted)" : "var(--ink)", textDecoration: status === "Done" ? "line-through" : "none", textDecorationColor: "var(--rule-2)", lineHeight: 1.4 }}>{title}</span>
+            <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>{ago}</span>
+            <StatusBadge status={status} />
+          </div>
+        ))}
+      </div>
+      <TechRow tags={["tsvector + GIN"]} note="Scoped to alice's todos — WHERE owner = alice" />
+    </div>
+  </div>
+);
+
+/* C2: Alice's list — search results view (query: "postgres") */
+const AlicePublicSearch = () => (
+  <div style={{ width: 1280, background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+    <GlobalNav active="Users" />
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 28px 48px", width: "100%" }}>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 10 }}>Public list · /users/alice/todos/?q=postgres</div>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
+        <div>
+          <h1 style={{ margin: "0 0 5px", fontFamily: "var(--sans)", fontWeight: 600, fontSize: 32, letterSpacing: "-0.025em", color: "var(--ink)" }}>alice's todos</h1>
+          <p style={{ margin: 0, fontSize: 14.5, color: "var(--muted)" }}>Public list for <span style={{ fontFamily: "var(--mono)", color: "var(--ink-2)" }}>alice</span>.</p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--bg-2)", border: "1px solid var(--rule-2)", display: "grid", placeItems: "center", fontFamily: "var(--mono)", fontSize: 13, color: "var(--ink-2)", fontWeight: 600 }}>AL</div>
+          <div>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 12.5, color: "var(--ink)", fontWeight: 500 }}>alice</div>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--muted)" }}>3 todos · 2 done</div>
+          </div>
+        </div>
+      </div>
+
+      <ScopedSearchBar value="postgres" placeholder="Search alice's todos…" />
+
+      {/* Search results within alice's list */}
+      <ResultsBox label={`Results for "postgres" in alice's list`} count={2}>
+        <SearchResultItem
+          title="Set up PostgreSQL full-text search GIN index"
+          snippet={[
+            {text:"…configure a GIN index on the "},
+            {text:"postgres",hl:true},
+            {text:" tsvector column to enable fast full-text search across all of alice's todo titles and notes…"},
+          ]}
+          meta="Done · 3 days ago"
+        />
+        <SearchResultItem
+          last
+          title="Benchmark tsvector vs Elasticsearch performance"
+          snippet={[
+            {text:"…comparing "},
+            {text:"postgres",hl:true},
+            {text:" native FTS against Elasticsearch using 50k todos — "},
+            {text:"postgres",hl:true},
+            {text:" wins below ~1M rows…"},
+          ]}
+          meta="Pending · 1 week ago"
+        />
+      </ResultsBox>
+      <TechRow tags={["ts_rank","ts_headline"]} note="Scoped WHERE owner = alice AND search_vector @@ query" />
+    </div>
+  </div>
+);
+
+/* C3: Own list — "Your todos" variant */
+const OwnPublicList = () => (
+  <div style={{ width: 1280, background: "var(--bg)", display: "flex", flexDirection: "column" }}>
+    <GlobalNav active="Users" />
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: "40px 28px 48px", width: "100%" }}>
+      <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--muted)", marginBottom: 10 }}>Your public list · /users/ada/todos/</div>
+
+      {/* "Your todos" heading + back link */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 24 }}>
+        <div>
+          <h1 style={{ margin: "0 0 5px", fontFamily: "var(--sans)", fontWeight: 600, fontSize: 32, letterSpacing: "-0.025em", color: "var(--ink)" }}>Your todos</h1>
+          <p style={{ margin: 0, fontSize: 14.5, color: "var(--muted)" }}>
+            This is your public list. &nbsp;
+            <a href="#" style={{ color: "var(--pg)", textDecoration: "none", borderBottom: "1px solid rgba(47,111,181,.28)", fontFamily: "var(--mono)", fontSize: 13 }}>← Back to your home list</a>
+          </p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+          <div style={{ width: 38, height: 38, borderRadius: 10, background: "var(--ink)", color: "var(--paper)", display: "grid", placeItems: "center", fontFamily: "var(--mono)", fontSize: 13, fontWeight: 600 }}>AL</div>
+          <div>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 12.5, color: "var(--ink)", fontWeight: 500 }}>ada</div>
+            <div style={{ fontFamily: "var(--mono)", fontSize: 10.5, color: "var(--muted)" }}>4 todos · 1 done</div>
+          </div>
+        </div>
+      </div>
+
+      <ScopedSearchBar placeholder="Search your todos…" />
+
+      {/* Ada's todos */}
+      <div style={{ background: "var(--paper)", border: "1px solid var(--rule-2)", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 0 rgba(20,24,29,.02), 0 8px 24px -16px rgba(20,24,29,.14)" }}>
+        {[
+          { title: "Write tests for the SKIP LOCKED worker",          status: "Pending", ago: "today" },
+          { title: "Add ts_headline highlighting to search UI",         status: "Done",    ago: "yesterday" },
+          { title: "Benchmark GIN vs. GIST index on todos table",     status: "Overdue", ago: "Mon" },
+          { title: "Document pg_notify trigger in README",             status: "Pending", ago: "Fri" },
+        ].map(({ title, status, ago }, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 18px", borderBottom: i === 3 ? "none" : "1px solid var(--rule)" }}>
+            <div style={{ width: 18, height: 18, borderRadius: 5, border: `1px solid ${status === "Done" ? "var(--ink)" : "var(--rule-2)"}`, background: status === "Done" ? "var(--ink)" : "#fff", display: "grid", placeItems: "center", flexShrink: 0 }}>
+              {status === "Done" && <span style={{ color: "var(--paper)", fontSize: 10 }}>✓</span>}
+            </div>
+            <span style={{ flex: 1, fontFamily: "var(--sans)", fontSize: 14.5, color: status === "Done" ? "var(--muted)" : "var(--ink)", textDecoration: status === "Done" ? "line-through" : "none", textDecorationColor: "var(--rule-2)" }}>{title}</span>
+            <span style={{ fontFamily: "var(--mono)", fontSize: 11, color: "var(--muted)", flexShrink: 0 }}>{ago}</span>
+            <StatusBadge status={status} />
+          </div>
+        ))}
+      </div>
+      <TechRow tags={["tsvector + GIN"]} note="Viewing own public route — heading switches to 'Your todos'" />
+    </div>
+  </div>
+);
+
+/* ═══════════════════════════════════════════════
+   ROOT
+   ═══════════════════════════════════════════════ */
+const App = () => (
+  <DesignCanvas>
+    <DCSection
+      id="search"
+      title="Page A — Search todos"
+      subtitle="/search/ · tsvector + GIN index + ts_rank + ts_headline · Phase 2"
+    >
+      <DCArtboard id="search-initial"  label="Desktop — initial (no query)"    width={1280}><SearchTodosInitial /></DCArtboard>
+      <DCArtboard id="search-results"  label="Desktop — results (q: postgres)" width={1280}><SearchTodosResults /></DCArtboard>
+      <DCArtboard id="search-empty"    label="Desktop — empty results"          width={1280}><SearchTodosEmpty /></DCArtboard>
+      <DCArtboard id="search-mobile"   label="Mobile — results · 390px"         width={390}><SearchTodosMobile /></DCArtboard>
+    </DCSection>
+
+    <DCSection
+      id="users"
+      title="Page B — Find users"
+      subtitle="/users/search/ · login required · username lookup"
+    >
+      <DCArtboard id="users-results"  label="Desktop — results (q: ali)"  width={1280}><FindUsersResults /></DCArtboard>
+      <DCArtboard id="users-empty"    label="Desktop — empty"              width={1280}><FindUsersEmpty /></DCArtboard>
+    </DCSection>
+
+    <DCSection
+      id="public-list"
+      title="Page C — Public todo list"
+      subtitle="/users/{username}/todos/ · default view · scoped FTS · own-list variant"
+    >
+      <DCArtboard id="public-default"  label="alice's list — default view"            width={1280}><AlicePublicDefault /></DCArtboard>
+      <DCArtboard id="public-search"   label="alice's list — scoped search (postgres)" width={1280}><AlicePublicSearch /></DCArtboard>
+      <DCArtboard id="public-own"      label="Own list — 'Your todos' variant (ada)"   width={1280}><OwnPublicList /></DCArtboard>
+    </DCSection>
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
