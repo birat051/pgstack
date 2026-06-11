@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>pgstack — Dashboard &amp; Queue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="design-canvas.jsx"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; }
+  body { font-family: "Geist", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  :root {
+    --bg:       #f3efe6;
+    --bg-2:     #ebe6da;
+    --paper:    #faf7f0;
+    --ink:      #14181d;
+    --ink-2:    #2a2f37;
+    --muted:    #6b6f78;
+    --rule:     #d9d3c4;
+    --rule-2:   #c8c1ae;
+    --pg:       #2f6fb5;
+    --pg-deep:  #1f4d80;
+    --pg-soft:  #e6eef8;
+    --amber:    #b97d2a;
+    --green:    #3d7a4a;
+    --red:      #b14b3c;
+    --sans:     "Geist", ui-sans-serif, system-ui, sans-serif;
+    --mono:     "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @keyframes pulse-dot { 0%,100%{opacity:1} 50%{opacity:.35} }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+/* ─────────────────────────────────────────────
+   GLOBAL NAV — logged in
+   ───────────────────────────────────────────── */
+const PAGES = ["Todos","Search","Users","Dashboard","Queue","Settings"];
+
+const GlobalNav = ({ active = "Dashboard", mobile = false }) => (
+  <div style={{ width:"100%", background:"var(--paper)", borderBottom:"1px solid var(--rule)", boxShadow:"0 1px 0 rgba(20,24,29,.02), 0 2px 8px rgba(20,24,29,.05)", flexShrink:0 }}>
+    <div style={{ display:"flex", alignItems:"center", height: mobile ? 50 : 56, padding: mobile ? "0 18px" : "0 28px" }}>
+      <a href="#" style={{ display:"flex", alignItems:"center", gap:9, textDecoration:"none", flexShrink:0, marginRight: mobile ? 0 : 32 }}>
+        <div style={{ width:28, height:28, borderRadius:7, background:"var(--ink)", color:"var(--paper)", display:"grid", placeItems:"center", fontFamily:"var(--mono)", fontWeight:700, fontSize:13 }}>pg</div>
+        <span style={{ fontFamily:"var(--mono)", fontWeight:600, fontSize:14.5, color:"var(--ink)", letterSpacing:"-0.01em" }}>pgstack</span>
+        {!mobile && <span style={{ fontFamily:"var(--mono)", fontSize:10.5, color:"var(--muted)", border:"1px solid var(--rule)", borderRadius:5, padding:"1px 6px" }}>v0.1</span>}
+      </a>
+      {!mobile && (
+        <nav style={{ display:"flex", alignItems:"center", gap:2, flex:1 }}>
+          {PAGES.map(page => {
+            const on = page === active;
+            return (
+              <a key={page} href="#" style={{ display:"inline-flex", alignItems:"center", height:36, padding:"0 12px", borderRadius:8, textDecoration:"none", fontFamily:"var(--mono)", fontSize:12.5, fontWeight: on ? 500 : 400, color: on ? "var(--ink)" : "var(--muted)", background: on ? "var(--bg-2)" : "transparent", border: on ? "1px solid var(--rule)" : "1px solid transparent", position:"relative" }}>
+                {page}
+                {on && <span style={{ position:"absolute", bottom:-1, left:"50%", transform:"translateX(-50%)", width:20, height:2, borderRadius:999, background:"var(--pg)" }} />}
+              </a>
+            );
+          })}
+        </nav>
+      )}
+      {mobile && <div style={{ flex:1 }} />}
+      <div style={{ display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+          <div style={{ width:26, height:26, borderRadius:7, background:"var(--bg-2)", border:"1px solid var(--rule-2)", display:"grid", placeItems:"center", fontFamily:"var(--mono)", fontSize:10, color:"var(--ink-2)", fontWeight:600 }}>AL</div>
+          {!mobile && <span style={{ fontFamily:"var(--mono)", fontSize:12.5, color:"var(--ink-2)" }}>ada</span>}
+        </div>
+        <div style={{ width:1, height:16, background:"var(--rule)" }} />
+        <button style={{ display:"inline-flex", alignItems:"center", height:30, padding:"0 11px", border:"1px solid var(--rule-2)", borderRadius:7, background:"var(--paper)", color:"var(--ink-2)", fontFamily:"var(--mono)", fontSize:11.5, cursor:"pointer" }}>
+          {mobile ? "↩" : "Log out"}
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   STAT CARD
+   ───────────────────────────────────────────── */
+const statTokens = {
+  Pending: { accent:"var(--muted)",  countColor:"var(--ink-2)",    dotColor:"var(--muted)",  cardBorder:"var(--rule-2)",          bgTint:"var(--paper)",               label:"Pending" },
+  Done:    { accent:"var(--green)",  countColor:"var(--green)",    dotColor:"var(--green)",  cardBorder:"rgba(61,122,74,.28)",    bgTint:"rgba(61,122,74,.04)",        label:"Done" },
+  Overdue: { accent:"var(--red)",    countColor:"var(--red)",      dotColor:"var(--red)",    cardBorder:"rgba(177,75,60,.28)",    bgTint:"rgba(177,75,60,.04)",        label:"Overdue" },
+};
+
+const StatCard = ({ status, count, sub }) => {
+  const t = statTokens[status];
+  return (
+    <div style={{
+      flex:1, background:t.bgTint,
+      border:`1px solid ${t.cardBorder}`,
+      borderTop:`3px solid ${t.accent}`,
+      borderRadius:14,
+      padding:"24px 26px 22px",
+      boxShadow:"0 1px 0 rgba(20,24,29,.02), 0 8px 24px -16px rgba(20,24,29,.14)",
+      display:"flex", flexDirection:"column", gap:8,
+    }}>
+      {/* label row */}
+      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+        <span style={{ width:8, height:8, borderRadius:"50%", background:t.dotColor, display:"inline-block", flexShrink:0 }} />
+        <span style={{ fontFamily:"var(--mono)", fontSize:11, letterSpacing:"0.12em", textTransform:"uppercase", color:"var(--muted)" }}>{t.label}</span>
+      </div>
+      {/* big number */}
+      <div style={{ fontFamily:"var(--sans)", fontWeight:700, fontSize:64, lineHeight:1, letterSpacing:"-0.04em", color:t.countColor }}>{count}</div>
+      {/* sub */}
+      <div style={{ fontFamily:"var(--mono)", fontSize:11.5, color:"var(--muted)", lineHeight:1.45 }}>{sub}</div>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   MATERIALIZED VIEW FOOTNOTE
+   ───────────────────────────────────────────── */
+const MatViewNote = ({ refreshed = "just now" }) => (
+  <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:18, fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)" }}>
+    <span style={{ background:"var(--pg-soft)", border:"1px solid rgba(47,111,181,.22)", color:"var(--pg-deep)", borderRadius:5, padding:"2px 8px", flexShrink:0 }}>MATERIALIZED VIEW</span>
+    <span>Refreshed after every write — no cache warming. Last refresh: <span style={{ color:"var(--ink-2)" }}>{refreshed}</span></span>
+  </div>
+);
+
+/* ─────────────────────────────────────────────
+   JOB STATUS BADGE
+   ───────────────────────────────────────────── */
+const JobBadge = ({ status }) => {
+  const m = {
+    Queued:     { bg:"var(--bg-2)",             border:"var(--rule-2)",           color:"var(--muted)",  dot:"var(--muted)",  pulse:false },
+    Processing: { bg:"rgba(185,125,42,.10)",    border:"rgba(185,125,42,.30)",   color:"var(--amber)", dot:"var(--amber)", pulse:true  },
+    Done:       { bg:"rgba(61,122,74,.10)",     border:"rgba(61,122,74,.28)",    color:"var(--green)", dot:"var(--green)", pulse:false },
+    Failed:     { bg:"rgba(177,75,60,.09)",     border:"rgba(177,75,60,.28)",    color:"var(--red)",   dot:"var(--red)",   pulse:false },
+  };
+  const s = m[status] || m.Queued;
+  return (
+    <span style={{ display:"inline-flex", alignItems:"center", gap:6, padding:"3px 10px 3px 8px", background:s.bg, border:`1px solid ${s.border}`, borderRadius:999, fontFamily:"var(--mono)", fontSize:11.5, fontWeight:500, color:s.color, letterSpacing:"0.03em", whiteSpace:"nowrap" }}>
+      <span style={{ width:7, height:7, borderRadius:"50%", background:s.dot, flexShrink:0, animation: s.pulse ? "pulse-dot 1.4s ease-in-out infinite" : "none" }} />
+      {status}
+    </span>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   JOB TYPE CHIP
+   ───────────────────────────────────────────── */
+const JobTypeChip = ({ label }) => (
+  <span style={{ display:"inline-flex", alignItems:"center", padding:"3px 8px", background:"var(--bg-2)", border:"1px solid var(--rule-2)", borderRadius:5, fontFamily:"var(--mono)", fontSize:11.5, color:"var(--ink-2)", letterSpacing:"0.02em" }}>{label}</span>
+);
+
+/* ─────────────────────────────────────────────
+   TABLE COMPONENTS
+   ───────────────────────────────────────────── */
+const TableHead = ({ cols }) => (
+  <div style={{ display:"grid", gridTemplateColumns:cols, padding:"10px 18px", background:"var(--bg-2)", borderBottom:"1px solid var(--rule-2)" }}>
+    {["Type","Todo","Status","Processed"].map(h => (
+      <div key={h} style={{ fontFamily:"var(--mono)", fontSize:10.5, letterSpacing:"0.12em", textTransform:"uppercase", color:"var(--muted)" }}>{h}</div>
+    ))}
+  </div>
+);
+
+const COLS = "150px 1fr 140px 180px";
+
+const JobRow = ({ type, todo, status, processed, last = false }) => {
+  const isProcessing = status === "Processing";
+  return (
+    <div style={{
+      display:"grid", gridTemplateColumns:COLS,
+      alignItems:"center",
+      padding:"13px 18px",
+      borderBottom: last ? "none" : "1px solid var(--rule)",
+      borderLeft: isProcessing ? "3px solid var(--amber)" : "3px solid transparent",
+      background: isProcessing ? "rgba(185,125,42,.03)" : "transparent",
+      gap:0,
+    }}>
+      <div><JobTypeChip label={type} /></div>
+      <div style={{ fontFamily:"var(--sans)", fontSize:14, color:"var(--ink)", paddingRight:16, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{todo}</div>
+      <div><JobBadge status={status} /></div>
+      <div style={{ fontFamily:"var(--mono)", fontSize:12.5, color: processed ? "var(--muted)" : "var(--rule-2)" }}>{processed || "—"}</div>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   WORKER STATUS BAR
+   ───────────────────────────────────────────── */
+const WorkerBar = ({ workers = 2, processing = 1, lastJob = "2m ago" }) => (
+  <div style={{ display:"flex", alignItems:"center", gap:14, padding:"10px 16px", background:"var(--paper)", border:"1px solid var(--rule-2)", borderRadius:10, marginBottom:16, boxShadow:"0 1px 2px rgba(20,24,29,.04)" }}>
+    <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+      <span style={{ width:8, height:8, borderRadius:"50%", background:"var(--green)", boxShadow:"0 0 0 3px rgba(61,122,74,.2)", display:"inline-block", flexShrink:0 }} />
+      <span style={{ fontFamily:"var(--mono)", fontSize:12, color:"var(--ink-2)", fontWeight:500 }}>{workers} workers active</span>
+    </div>
+    <div style={{ width:1, height:14, background:"var(--rule)" }} />
+    <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+      <span style={{ width:8, height:8, borderRadius:"50%", background:"var(--amber)", animation:"pulse-dot 1.4s ease-in-out infinite", display:"inline-block", flexShrink:0 }} />
+      <span style={{ fontFamily:"var(--mono)", fontSize:12, color:"var(--amber)" }}>{processing} processing</span>
+    </div>
+    <div style={{ width:1, height:14, background:"var(--rule)" }} />
+    <span style={{ fontFamily:"var(--mono)", fontSize:12, color:"var(--muted)" }}>last completed: <span style={{ color:"var(--ink-2)" }}>{lastJob}</span></span>
+    <div style={{ flex:1 }} />
+    <span style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)", background:"var(--bg-2)", border:"1px solid var(--rule-2)", borderRadius:5, padding:"2px 8px" }}>SELECT FOR UPDATE SKIP LOCKED</span>
+  </div>
+);
+
+/* ═══════════════════════════════════════════════
+   PAGE A — DASHBOARD
+   ═══════════════════════════════════════════════ */
+
+/* A1: Own stats */
+const DashboardOwn = () => (
+  <div style={{ width:1280, background:"var(--bg)", display:"flex", flexDirection:"column" }}>
+    <GlobalNav active="Dashboard" />
+    <div style={{ maxWidth:960, margin:"0 auto", padding:"40px 28px 48px", width:"100%" }}>
+      {/* Page header */}
+      <div style={{ marginBottom:28 }}>
+        <div style={{ fontFamily:"var(--mono)", fontSize:10.5, letterSpacing:"0.12em", textTransform:"uppercase", color:"var(--muted)", marginBottom:10 }}>Phase 4 · MATERIALIZED VIEW · CONCURRENTLY</div>
+        <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between" }}>
+          <h1 style={{ margin:0, fontFamily:"var(--sans)", fontWeight:600, fontSize:32, letterSpacing:"-0.025em", color:"var(--ink)", lineHeight:1.06 }}>Todo counts by status</h1>
+          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+            <div style={{ width:7, height:7, borderRadius:"50%", background:"var(--green)", boxShadow:"0 0 0 3px rgba(61,122,74,.2)" }} />
+            <span style={{ fontFamily:"var(--mono)", fontSize:12, color:"var(--muted)" }}>view refreshed</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Stat cards */}
+      <div style={{ display:"flex", gap:16 }}>
+        <StatCard status="Pending" count={12} sub="awaiting completion" />
+        <StatCard status="Done"    count={8}  sub="36% of 22 total" />
+        <StatCard status="Overdue" count={2}  sub="past due date" />
+      </div>
+
+      {/* Distribution bar */}
+      <div style={{ marginTop:20, background:"var(--paper)", border:"1px solid var(--rule-2)", borderRadius:10, padding:"14px 18px", boxShadow:"0 1px 2px rgba(20,24,29,.04)" }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+          <span style={{ fontFamily:"var(--mono)", fontSize:11, letterSpacing:"0.1em", textTransform:"uppercase", color:"var(--muted)" }}>Distribution · 22 todos</span>
+          <span style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)" }}>ada</span>
+        </div>
+        <div style={{ display:"flex", height:10, borderRadius:999, overflow:"hidden", gap:2 }}>
+          <div style={{ flex:12, background:"var(--muted)", opacity:0.4, borderRadius:"999px 0 0 999px" }} />
+          <div style={{ flex:8, background:"var(--green)" }} />
+          <div style={{ flex:2, background:"var(--red)", borderRadius:"0 999px 999px 0" }} />
+        </div>
+        <div style={{ display:"flex", gap:16, marginTop:8 }}>
+          {[{c:"var(--muted)",l:"Pending",n:12},{c:"var(--green)",l:"Done",n:8},{c:"var(--red)",l:"Overdue",n:2}].map(({c,l,n}) => (
+            <div key={l} style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <div style={{ width:8, height:8, borderRadius:"50%", background:c, opacity: l==="Pending" ? 0.6:1 }} />
+              <span style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)" }}>{l} {n}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <MatViewNote refreshed="just now" />
+    </div>
+  </div>
+);
+
+/* A2: Viewing @bob's stats */
+const DashboardBob = () => (
+  <div style={{ width:1280, background:"var(--bg)", display:"flex", flexDirection:"column" }}>
+    <GlobalNav active="Dashboard" />
+    <div style={{ maxWidth:960, margin:"0 auto", padding:"40px 28px 48px", width:"100%" }}>
+      {/* Context banner */}
+      <div style={{ display:"flex", gap:11, padding:"11px 14px", background:"var(--pg-soft)", border:"1px solid rgba(47,111,181,.25)", borderLeft:"3px solid var(--pg)", borderRadius:10, marginBottom:22 }}>
+        <div style={{ width:20, height:20, borderRadius:"50%", background:"var(--pg)", color:"#fff", display:"grid", placeItems:"center", fontSize:11, fontWeight:700, flexShrink:0, marginTop:1, fontFamily:"var(--mono)" }}>i</div>
+        <div>
+          <div style={{ fontFamily:"var(--mono)", fontSize:11.5, fontWeight:600, color:"var(--pg-deep)", marginBottom:3 }}>List: @bob</div>
+          <div style={{ fontSize:13.5, color:"var(--ink-2)", lineHeight:1.45 }}>
+            Showing public todo counts for <span style={{ fontFamily:"var(--mono)", color:"var(--ink)" }}>bob</span>. &nbsp;
+            <a href="#" style={{ color:"var(--pg)", textDecoration:"none", borderBottom:"1px solid rgba(47,111,181,.28)", fontFamily:"var(--mono)", fontSize:12.5 }}>View your own stats →</a>
+          </div>
+        </div>
+      </div>
+
+      {/* Page header */}
+      <div style={{ marginBottom:28 }}>
+        <div style={{ fontFamily:"var(--mono)", fontSize:10.5, letterSpacing:"0.12em", textTransform:"uppercase", color:"var(--muted)", marginBottom:10 }}>Phase 4 · MATERIALIZED VIEW · ?username=bob</div>
+        <h1 style={{ margin:0, fontFamily:"var(--sans)", fontWeight:600, fontSize:32, letterSpacing:"-0.025em", color:"var(--ink)", lineHeight:1.06 }}>Todo counts by status</h1>
+      </div>
+
+      {/* Stat cards — bob's counts */}
+      <div style={{ display:"flex", gap:16 }}>
+        <StatCard status="Pending" count={5}  sub="awaiting completion" />
+        <StatCard status="Done"    count={19} sub="79% of 24 total" />
+        <StatCard status="Overdue" count={0}  sub="no overdue todos" />
+      </div>
+
+      <div style={{ marginTop:20, background:"var(--paper)", border:"1px solid var(--rule-2)", borderRadius:10, padding:"14px 18px" }}>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:10 }}>
+          <span style={{ fontFamily:"var(--mono)", fontSize:11, letterSpacing:"0.1em", textTransform:"uppercase", color:"var(--muted)" }}>Distribution · 24 todos</span>
+          <span style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)" }}>bob</span>
+        </div>
+        <div style={{ display:"flex", height:10, borderRadius:999, overflow:"hidden", gap:2 }}>
+          <div style={{ flex:5,  background:"var(--muted)", opacity:0.4, borderRadius:"999px 0 0 999px" }} />
+          <div style={{ flex:19, background:"var(--green)", borderRadius:"0 999px 999px 0" }} />
+        </div>
+        <div style={{ display:"flex", gap:16, marginTop:8 }}>
+          {[{c:"var(--muted)",l:"Pending",n:5},{c:"var(--green)",l:"Done",n:19},{c:"var(--rule-2)",l:"Overdue",n:0}].map(({c,l,n}) => (
+            <div key={l} style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <div style={{ width:8, height:8, borderRadius:"50%", background:c }} />
+              <span style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)" }}>{l} {n}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <MatViewNote refreshed="14s ago" />
+    </div>
+  </div>
+);
+
+/* A3: Mobile */
+const DashboardMobile = () => (
+  <div style={{ width:390, background:"var(--bg)", display:"flex", flexDirection:"column" }}>
+    <GlobalNav active="Dashboard" mobile />
+    <div style={{ padding:"24px 18px 32px" }}>
+      <div style={{ fontFamily:"var(--mono)", fontSize:10, letterSpacing:"0.12em", textTransform:"uppercase", color:"var(--muted)", marginBottom:8 }}>Phase 4 · MATERIALIZED VIEW</div>
+      <h1 style={{ margin:"0 0 22px", fontFamily:"var(--sans)", fontWeight:600, fontSize:26, letterSpacing:"-0.02em", color:"var(--ink)" }}>Todo counts</h1>
+
+      {/* Stacked cards on mobile */}
+      <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
+        {[
+          { status:"Pending", count:12, sub:"awaiting completion" },
+          { status:"Done",    count:8,  sub:"36% of 22 total" },
+          { status:"Overdue", count:2,  sub:"past due date" },
+        ].map(({ status, count, sub }) => {
+          const t = statTokens[status];
+          return (
+            <div key={status} style={{ background:t.bgTint, border:`1px solid ${t.cardBorder}`, borderTop:`3px solid ${t.accent}`, borderRadius:12, padding:"18px 20px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+              <div>
+                <div style={{ display:"flex", alignItems:"center", gap:7, marginBottom:6 }}>
+                  <span style={{ width:7, height:7, borderRadius:"50%", background:t.dotColor }} />
+                  <span style={{ fontFamily:"var(--mono)", fontSize:10.5, letterSpacing:"0.12em", textTransform:"uppercase", color:"var(--muted)" }}>{status}</span>
+                </div>
+                <div style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)" }}>{sub}</div>
+              </div>
+              <div style={{ fontFamily:"var(--sans)", fontWeight:700, fontSize:52, lineHeight:1, letterSpacing:"-0.04em", color:t.countColor }}>{count}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ marginTop:16, fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)", lineHeight:1.55, paddingTop:14, borderTop:"1px solid var(--rule)" }}>
+        <span style={{ background:"var(--pg-soft)", border:"1px solid rgba(47,111,181,.22)", color:"var(--pg-deep)", borderRadius:5, padding:"2px 7px", marginRight:8 }}>MATERIALIZED VIEW</span>
+        No cache warming — refreshed on every write.
+      </div>
+    </div>
+  </div>
+);
+
+/* ═══════════════════════════════════════════════
+   PAGE B — QUEUE MONITOR
+   ═══════════════════════════════════════════════ */
+
+const JOB_ROWS = [
+  { type:"send_reminder", todo:"Buy milk",   status:"Queued",     processed:null },
+  { type:"send_reminder", todo:"Deploy app", status:"Processing", processed:null },
+  { type:"send_reminder", todo:"Write docs", status:"Done",       processed:"2026-06-06 14:32" },
+  { type:"send_reminder", todo:"Fix bug",    status:"Failed",     processed:"2026-06-06 14:30" },
+];
+
+/* B1: With rows */
+const QueueWithRows = () => (
+  <div style={{ width:1280, background:"var(--bg)", display:"flex", flexDirection:"column" }}>
+    <GlobalNav active="Queue" />
+    <div style={{ maxWidth:960, margin:"0 auto", padding:"40px 28px 48px", width:"100%" }}>
+      <div style={{ fontFamily:"var(--mono)", fontSize:10.5, letterSpacing:"0.12em", textTransform:"uppercase", color:"var(--muted)", marginBottom:10 }}>Phase 5 · SELECT FOR UPDATE SKIP LOCKED</div>
+      <h1 style={{ margin:"0 0 22px", fontFamily:"var(--sans)", fontWeight:600, fontSize:32, letterSpacing:"-0.025em", color:"var(--ink)", lineHeight:1.06 }}>Jobs for your Todos</h1>
+
+      <WorkerBar />
+
+      {/* Table */}
+      <div style={{ background:"var(--paper)", border:"1px solid var(--rule-2)", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 0 rgba(20,24,29,.02), 0 8px 24px -16px rgba(20,24,29,.14)" }}>
+        <TableHead cols={COLS} />
+        {JOB_ROWS.map((r, i) => (
+          <JobRow key={i} {...r} last={i === JOB_ROWS.length - 1} />
+        ))}
+      </div>
+
+      {/* Footer annotation */}
+      <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:16, fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)" }}>
+        <span style={{ background:"var(--pg-soft)", border:"1px solid rgba(47,111,181,.22)", color:"var(--pg-deep)", borderRadius:5, padding:"2px 8px" }}>SKIP LOCKED</span>
+        <span>Workers claim rows atomically — no double-processing. Max 50 rows server-side.</span>
+      </div>
+      <div style={{ marginTop:10, padding:"11px 14px", background:"var(--paper)", border:"1px solid var(--rule-2)", borderLeft:"3px solid var(--amber)", borderRadius:10, fontFamily:"var(--mono)", fontSize:11.5, color:"var(--muted)", lineHeight:1.55 }}>
+        <span style={{ color:"var(--amber)", fontWeight:500 }}>Processing row — </span>
+        Amber left-border + tinted background surface the currently-claimed job at a glance. In production, the amber dot animates via <span style={{ color:"var(--ink)" }}>pulse-dot</span> keyframe.
+      </div>
+    </div>
+  </div>
+);
+
+/* B2: Empty state */
+const QueueEmpty = () => (
+  <div style={{ width:1280, background:"var(--bg)", display:"flex", flexDirection:"column" }}>
+    <GlobalNav active="Queue" />
+    <div style={{ maxWidth:960, margin:"0 auto", padding:"40px 28px 48px", width:"100%" }}>
+      <div style={{ fontFamily:"var(--mono)", fontSize:10.5, letterSpacing:"0.12em", textTransform:"uppercase", color:"var(--muted)", marginBottom:10 }}>Phase 5 · SELECT FOR UPDATE SKIP LOCKED</div>
+      <h1 style={{ margin:"0 0 22px", fontFamily:"var(--sans)", fontWeight:600, fontSize:32, letterSpacing:"-0.025em", color:"var(--ink)", lineHeight:1.06 }}>Jobs for your Todos</h1>
+
+      <WorkerBar workers={2} processing={0} lastJob="8m ago" />
+
+      <div style={{ display:"flex", flexDirection:"column", alignItems:"center", padding:"48px 24px", border:"1px dashed var(--rule-2)", borderRadius:14, background:"var(--paper)", textAlign:"center", boxShadow:"0 1px 2px rgba(20,24,29,.04)" }}>
+        <div style={{ fontFamily:"var(--mono)", fontSize:26, color:"var(--muted)", marginBottom:12, opacity:0.4 }}>⏸</div>
+        <div style={{ fontFamily:"var(--sans)", fontSize:16, fontWeight:600, letterSpacing:"-0.01em", color:"var(--ink)", marginBottom:5 }}>No jobs found for your Todos.</div>
+        <div style={{ fontSize:13.5, color:"var(--muted)", lineHeight:1.55, maxWidth:360 }}>
+          Jobs are enqueued automatically when a todo is created. Workers pick them up using <span style={{ fontFamily:"var(--mono)", fontSize:12.5, color:"var(--ink-2)" }}>SELECT … FOR UPDATE SKIP LOCKED</span>.
+        </div>
+      </div>
+
+      <div style={{ display:"flex", alignItems:"center", gap:10, marginTop:16, fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)" }}>
+        <span style={{ background:"var(--pg-soft)", border:"1px solid rgba(47,111,181,.22)", color:"var(--pg-deep)", borderRadius:5, padding:"2px 8px" }}>todos_job</span>
+        <span>table is empty for this user — no todos have been created yet.</span>
+      </div>
+    </div>
+  </div>
+);
+
+/* B3: Mobile — stacked job cards */
+const QueueMobile = () => (
+  <div style={{ width:390, background:"var(--bg)", display:"flex", flexDirection:"column" }}>
+    <GlobalNav active="Queue" mobile />
+    <div style={{ padding:"24px 18px 32px" }}>
+      <div style={{ fontFamily:"var(--mono)", fontSize:10, letterSpacing:"0.12em", textTransform:"uppercase", color:"var(--muted)", marginBottom:8 }}>Phase 5 · SKIP LOCKED</div>
+      <h1 style={{ margin:"0 0 16px", fontFamily:"var(--sans)", fontWeight:600, fontSize:26, letterSpacing:"-0.02em", color:"var(--ink)" }}>Job queue</h1>
+
+      {/* Compact worker bar */}
+      <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:"var(--paper)", border:"1px solid var(--rule-2)", borderRadius:9, marginBottom:16, fontFamily:"var(--mono)", fontSize:11 }}>
+        <span style={{ width:7, height:7, borderRadius:"50%", background:"var(--green)", boxShadow:"0 0 0 3px rgba(61,122,74,.2)", flexShrink:0 }} />
+        <span style={{ color:"var(--ink-2)" }}>2 workers</span>
+        <span style={{ color:"var(--muted)" }}>·</span>
+        <span style={{ width:7, height:7, borderRadius:"50%", background:"var(--amber)", animation:"pulse-dot 1.4s ease-in-out infinite", flexShrink:0 }} />
+        <span style={{ color:"var(--amber)" }}>1 processing</span>
+      </div>
+
+      {/* Stacked cards */}
+      <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+        {JOB_ROWS.map(({ type, todo, status, processed }, i) => {
+          const isProcessing = status === "Processing";
+          return (
+            <div key={i} style={{
+              background:"var(--paper)",
+              border:"1px solid var(--rule-2)",
+              borderLeft: isProcessing ? "3px solid var(--amber)" : "3px solid transparent",
+              borderRadius:10,
+              padding:"14px 16px",
+              boxShadow:"0 1px 2px rgba(20,24,29,.04)",
+              background: isProcessing ? "rgba(185,125,42,.03)" : "var(--paper)",
+            }}>
+              <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", marginBottom:8, gap:10 }}>
+                <span style={{ fontFamily:"var(--sans)", fontSize:14, fontWeight:500, color:"var(--ink)", flex:1, lineHeight:1.3 }}>{todo}</span>
+                <JobBadge status={status} />
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <JobTypeChip label={type} />
+                {processed && <span style={{ fontFamily:"var(--mono)", fontSize:11, color:"var(--muted)" }}>{processed}</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  </div>
+);
+
+/* ═══════════════════════════════════════════════
+   ROOT
+   ═══════════════════════════════════════════════ */
+const App = () => (
+  <DesignCanvas>
+    <DCSection
+      id="dashboard"
+      title="Page A — Dashboard"
+      subtitle="/dashboard/ · MATERIALIZED VIEW · CONCURRENTLY · own + @username variant + mobile"
+    >
+      <DCArtboard id="dash-own"    label="Desktop — own stats"          width={1280}><DashboardOwn /></DCArtboard>
+      <DCArtboard id="dash-bob"    label="Desktop — viewing @bob"        width={1280}><DashboardBob /></DCArtboard>
+      <DCArtboard id="dash-mobile" label="Mobile — 390px"                width={390}><DashboardMobile /></DCArtboard>
+    </DCSection>
+
+    <DCSection
+      id="queue"
+      title="Page B — Queue monitor"
+      subtitle="/queue/ · SELECT FOR UPDATE SKIP LOCKED · worker status · desktop + mobile"
+    >
+      <DCArtboard id="queue-rows"   label="Desktop — with jobs"          width={1280}><QueueWithRows /></DCArtboard>
+      <DCArtboard id="queue-empty"  label="Desktop — empty state"        width={1280}><QueueEmpty /></DCArtboard>
+      <DCArtboard id="queue-mobile" label="Mobile — stacked cards · 390px" width={390}><QueueMobile /></DCArtboard>
+    </DCSection>
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>

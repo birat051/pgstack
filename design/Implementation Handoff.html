@@ -1,0 +1,925 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>pgstack — Implementation Handoff</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  /* ── tokens ── */
+  :root {
+    --bg:      #f3efe6; --bg-2:    #ebe6da; --paper:   #faf7f0;
+    --ink:     #14181d; --ink-2:   #2a2f37; --muted:   #6b6f78;
+    --rule:    #d9d3c4; --rule-2:  #c8c1ae;
+    --pg:      #2f6fb5; --pg-deep: #1f4d80; --pg-soft: #e6eef8;
+    --amber:   #b97d2a; --green:   #3d7a4a; --red:     #b14b3c;
+    --sans:    "Geist", ui-sans-serif, system-ui, sans-serif;
+    --mono:    "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  /* ── reset ── */
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; padding: 0;
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--ink);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── sticky jump nav ── */
+  .jumpnav {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--paper);
+    border-bottom: 1px solid var(--rule);
+    box-shadow: 0 2px 8px rgba(20,24,29,.05);
+  }
+  .jumpnav__inner {
+    max-width: 960px; margin: 0 auto;
+    padding: 0 32px;
+    display: flex; align-items: center;
+    height: 48px; gap: 0;
+  }
+  .jumpnav__brand {
+    display: flex; align-items: center; gap: 8px;
+    text-decoration: none; margin-right: 24px; flex-shrink: 0;
+  }
+  .jumpnav__mark {
+    width: 24px; height: 24px; border-radius: 6px;
+    background: var(--ink); color: var(--paper);
+    display: grid; place-items: center;
+    font-family: var(--mono); font-weight: 700; font-size: 11px;
+  }
+  .jumpnav__title {
+    font-family: var(--mono); font-weight: 600; font-size: 13px;
+    color: var(--ink); letter-spacing: -0.01em;
+  }
+  .jumpnav__links {
+    display: flex; align-items: center; gap: 2px;
+    list-style: none; margin: 0; padding: 0; flex: 1;
+    overflow-x: auto;
+  }
+  .jumpnav__links a {
+    display: inline-flex; align-items: center;
+    height: 30px; padding: 0 10px; border-radius: 6px;
+    text-decoration: none; white-space: nowrap;
+    font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+  }
+  .jumpnav__links a:hover { background: var(--bg-2); color: var(--ink); }
+  .jumpnav__badge {
+    margin-left: auto; flex-shrink: 0;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    border: 1px solid var(--rule-2); border-radius: 5px; padding: 2px 8px;
+  }
+
+  /* ── page shell ── */
+  .page { max-width: 960px; margin: 0 auto; padding: 48px 32px 80px; }
+
+  /* ── doc header ── */
+  .doc-header { margin-bottom: 48px; padding-bottom: 28px; border-bottom: 1px solid var(--rule); }
+  .doc-header__kicker {
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .doc-header h1 {
+    margin: 0 0 10px; font-size: 36px; font-weight: 600;
+    letter-spacing: -0.03em; line-height: 1.06;
+  }
+  .doc-header__sub { font-size: 15px; color: var(--muted); margin: 0; max-width: 580px; line-height: 1.55; }
+  .doc-header__meta {
+    margin-top: 18px; display: flex; flex-wrap: wrap; gap: 8px;
+  }
+  .tag {
+    display: inline-flex; align-items: center;
+    padding: 3px 9px; border-radius: 5px;
+    font-family: var(--mono); font-size: 11px;
+    background: var(--pg-soft); border: 1px solid rgba(47,111,181,.22);
+    color: var(--pg-deep);
+  }
+  .tag--neutral {
+    background: var(--bg-2); border-color: var(--rule-2); color: var(--ink-2);
+  }
+
+  /* ── sections ── */
+  .section { margin-bottom: 56px; }
+  .section__header {
+    display: flex; align-items: baseline; gap: 14px;
+    margin-bottom: 20px; padding-bottom: 14px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .section__num {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--pg); letter-spacing: 0.08em;
+  }
+  .section__title {
+    margin: 0; font-size: 22px; font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .section__sub {
+    margin-left: auto; font-family: var(--mono); font-size: 11px;
+    color: var(--muted); white-space: nowrap;
+  }
+
+  /* ── prose ── */
+  p { margin: 0 0 14px; color: var(--ink-2); }
+  p:last-child { margin-bottom: 0; }
+  strong { color: var(--ink); font-weight: 600; }
+  a { color: var(--pg); text-decoration: none; border-bottom: 1px solid rgba(47,111,181,.3); }
+  a:hover { border-bottom-color: var(--pg); }
+
+  /* ── code blocks ── */
+  .codeblock {
+    background: #0f1216;
+    border: 1px solid #1c2128;
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 16px 0;
+    box-shadow: 0 1px 0 rgba(20,24,29,.04), 0 8px 24px -16px rgba(20,24,29,.4);
+  }
+  .codeblock__head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 14px;
+    background: #14181d;
+    border-bottom: 1px solid #1c2128;
+    font-family: var(--mono); font-size: 11px; color: #6b7280;
+    letter-spacing: 0.04em;
+  }
+  .codeblock__lang {
+    color: var(--pg); background: rgba(47,111,181,.14);
+    border: 1px solid rgba(47,111,181,.35);
+    padding: 1px 7px; border-radius: 4px;
+    font-size: 10px; letter-spacing: 0.06em;
+  }
+  .codeblock__copy {
+    cursor: pointer; color: #6b7280; font-size: 10.5px;
+    background: none; border: 1px solid #2a2f37;
+    border-radius: 4px; padding: 2px 8px;
+    font-family: var(--mono);
+  }
+  .codeblock__copy:hover { color: #cfd3dc; border-color: #6b7280; }
+  .codeblock pre {
+    margin: 0; padding: 16px 18px;
+    font-family: var(--mono); font-size: 12.5px;
+    line-height: 1.65; color: #d6d3c8;
+    overflow-x: auto; white-space: pre;
+  }
+  /* syntax colors */
+  .k  { color: #c490d8; }   /* keyword / at-rule */
+  .fn { color: #9ec1ed; }   /* function / prop */
+  .s  { color: #c7a96b; }   /* string */
+  .n  { color: #d6d3c8; }   /* identifier */
+  .c  { color: #6b7280; font-style: italic; } /* comment */
+  .v  { color: #7cc28a; }   /* value / green */
+  .p  { color: #8a8f99; }   /* punctuation */
+  .t  { color: #e0a060; }   /* tag / template */
+
+  /* ── inline code ── */
+  code {
+    font-family: var(--mono); font-size: 0.88em;
+    background: rgba(20,24,29,.06); padding: 1px 6px;
+    border-radius: 5px; color: var(--ink);
+  }
+
+  /* ── tables ── */
+  .tbl { width: 100%; border-collapse: collapse; margin: 16px 0; }
+  .tbl thead tr { background: var(--bg-2); }
+  .tbl th {
+    text-align: left; padding: 8px 14px;
+    font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--muted); border-bottom: 1px solid var(--rule-2);
+    font-weight: 500;
+  }
+  .tbl td {
+    padding: 11px 14px;
+    font-size: 13.5px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl tbody tr:hover { background: rgba(20,24,29,.02); }
+  .tbl-wrap {
+    border: 1px solid var(--rule-2); border-radius: 12px;
+    overflow: hidden; margin: 16px 0;
+    box-shadow: 0 1px 0 rgba(20,24,29,.02), 0 4px 12px -8px rgba(20,24,29,.12);
+  }
+
+  /* ── badge previews ── */
+  .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+  .bdg {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 10px 4px 8px; border-radius: 999px;
+    font-family: var(--mono); font-size: 12px; font-weight: 500;
+    letter-spacing: 0.04em;
+  }
+  .bdg::before { content:""; width:7px; height:7px; border-radius:50%; background:currentColor; flex-shrink:0; }
+  .bdg--pending   { background:var(--bg-2);              border:1px solid var(--rule-2);           color:var(--muted);  }
+  .bdg--done      { background:rgba(61,122,74,.10);      border:1px solid rgba(61,122,74,.28);     color:var(--green);  }
+  .bdg--overdue   { background:rgba(177,75,60,.09);      border:1px solid rgba(177,75,60,.28);     color:var(--red);    }
+  .bdg--queued    { background:var(--bg-2);              border:1px solid var(--rule-2);           color:var(--muted);  }
+  .bdg--processing{ background:rgba(185,125,42,.10);     border:1px solid rgba(185,125,42,.30);    color:var(--amber);  }
+  .bdg--failed    { background:rgba(177,75,60,.09);      border:1px solid rgba(177,75,60,.28);     color:var(--red);    }
+
+  /* ── callout ── */
+  .callout {
+    padding: 13px 16px; border-radius: 10px; margin: 16px 0;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .callout--info    { background: var(--pg-soft); border: 1px solid rgba(47,111,181,.25); border-left: 3px solid var(--pg); }
+  .callout--warning { background: #fdf4e4;         border: 1px solid rgba(185,125,42,.30); border-left: 3px solid var(--amber); }
+  .callout--note    { background: var(--bg-2);     border: 1px solid var(--rule-2);       border-left: 3px solid var(--rule-2); }
+  .callout__icon {
+    width: 18px; height: 18px; border-radius: 50%;
+    display: grid; place-items: center;
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    color: #fff; flex-shrink: 0; margin-top: 1px;
+  }
+  .callout--info    .callout__icon { background: var(--pg); }
+  .callout--warning .callout__icon { background: var(--amber); }
+  .callout--note    .callout__icon { background: var(--muted); }
+  .callout__body { font-size: 13.5px; color: var(--ink-2); line-height: 1.5; }
+  .callout__body strong { color: var(--ink); }
+
+  /* ── rendering matrix ── */
+  .pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 8px; border-radius: 999px;
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+  }
+  .pill--server { background: rgba(47,111,181,.12); border: 1px solid rgba(47,111,181,.25); color: var(--pg-deep); }
+  .pill--client { background: rgba(185,125,42,.10); border: 1px solid rgba(185,125,42,.28); color: #7a520e; }
+  .pill--none   { background: var(--bg-2); border: 1px solid var(--rule-2); color: var(--muted); }
+  .pill::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+
+  /* ── footer ── */
+  .doc-footer {
+    margin-top: 64px; padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px;
+    font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+  }
+
+  @media (max-width: 680px) {
+    .page { padding: 32px 18px 56px; }
+    .codeblock pre { font-size: 11px; }
+    .section__sub { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- JUMP NAV -->
+<nav class="jumpnav" aria-label="Document sections">
+  <div class="jumpnav__inner">
+    <a href="#top" class="jumpnav__brand">
+      <div class="jumpnav__mark">pg</div>
+      <span class="jumpnav__title">pgstack</span>
+    </a>
+    <ul class="jumpnav__links">
+      <li><a href="#tokens">Tokens</a></li>
+      <li><a href="#type-scale">Type</a></li>
+      <li><a href="#spacing">Spacing</a></li>
+      <li><a href="#nav">Nav HTML</a></li>
+      <li><a href="#badges">Badges</a></li>
+      <li><a href="#forms">Forms</a></li>
+      <li><a href="#messages">Messages</a></li>
+      <li><a href="#rendering">Rendering</a></li>
+    </ul>
+    <span class="jumpnav__badge">v0.1 · June 2026</span>
+  </div>
+</nav>
+
+<div class="page" id="top">
+
+  <!-- DOC HEADER -->
+  <header class="doc-header">
+    <div class="doc-header__kicker">pgstack · Phase 0 · Implementation Handoff</div>
+    <h1>Frontend Spec</h1>
+    <p class="doc-header__sub">
+      CSS tokens, HTML patterns, and a rendering matrix for implementing the pgstack design system in plain Django templates extending <code>base.html</code>. No React, no Vue, no build step on the frontend.
+    </p>
+    <div class="doc-header__meta">
+      <span class="tag">Django 5</span>
+      <span class="tag">Channels 4</span>
+      <span class="tag">Daphne 4</span>
+      <span class="tag">PostgreSQL 16</span>
+      <span class="tag tag--neutral">No JS framework</span>
+      <span class="tag tag--neutral">Server-rendered templates</span>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════
+       1. DESIGN TOKENS
+       ══════════════════════════════════════════ -->
+  <section class="section" id="tokens" data-screen-label="Tokens">
+    <div class="section__header">
+      <span class="section__num">01</span>
+      <h2 class="section__title">CSS custom properties</h2>
+      <span class="section__sub">Copy into static/css/base.css</span>
+    </div>
+    <p>All design tokens are defined as CSS custom properties on <code>:root</code>. Dark mode overrides live under <code>[data-theme="dark"]</code> — set the attribute on <code>&lt;html&gt;</code> via a user preference cookie.</p>
+
+    <div class="codeblock">
+      <div class="codeblock__head">
+        <span>static/css/base.css</span>
+        <span class="codeblock__lang">CSS</span>
+      </div>
+<pre><span class="c">/* ── Surface ───────────────────────────────── */</span>
+<span class="k">:root</span> <span class="p">{</span>
+  <span class="fn">--bg</span><span class="p">:</span>       <span class="s">#f3efe6</span><span class="p">;</span>  <span class="c">/* page background */</span>
+  <span class="fn">--bg-2</span><span class="p">:</span>     <span class="s">#ebe6da</span><span class="p">;</span>  <span class="c">/* elevated surface, table headers */</span>
+  <span class="fn">--paper</span><span class="p">:</span>    <span class="s">#faf7f0</span><span class="p">;</span>  <span class="c">/* cards, nav, inputs */</span>
+
+  <span class="c">/* ── Text ──────────────────────────────────── */</span>
+  <span class="fn">--ink</span><span class="p">:</span>      <span class="s">#14181d</span><span class="p">;</span>  <span class="c">/* primary text */</span>
+  <span class="fn">--ink-2</span><span class="p">:</span>    <span class="s">#2a2f37</span><span class="p">;</span>  <span class="c">/* secondary text */</span>
+  <span class="fn">--muted</span><span class="p">:</span>    <span class="s">#6b6f78</span><span class="p">;</span>  <span class="c">/* placeholders, labels, captions */</span>
+
+  <span class="c">/* ── Borders ───────────────────────────────── */</span>
+  <span class="fn">--rule</span><span class="p">:</span>     <span class="s">#d9d3c4</span><span class="p">;</span>  <span class="c">/* dividers, row separators */</span>
+  <span class="fn">--rule-2</span><span class="p">:</span>   <span class="s">#c8c1ae</span><span class="p">;</span>  <span class="c">/* card borders, input borders */</span>
+
+  <span class="c">/* ── Accent — Postgres blue ────────────────── */</span>
+  <span class="fn">--pg</span><span class="p">:</span>       <span class="s">#2f6fb5</span><span class="p">;</span>  <span class="c">/* links, focus rings, active nav */</span>
+  <span class="fn">--pg-deep</span><span class="p">:</span>  <span class="s">#1f4d80</span><span class="p">;</span>  <span class="c">/* text on pg-soft surfaces */</span>
+  <span class="fn">--pg-soft</span><span class="p">:</span>  <span class="s">#e6eef8</span><span class="p">;</span>  <span class="c">/* tag backgrounds, info banners */</span>
+
+  <span class="c">/* ── Semantic ──────────────────────────────── */</span>
+  <span class="fn">--green</span><span class="p">:</span>    <span class="s">#3d7a4a</span><span class="p">;</span>  <span class="c">/* done, success */</span>
+  <span class="fn">--amber</span><span class="p">:</span>    <span class="s">#b97d2a</span><span class="p">;</span>  <span class="c">/* processing, warning */</span>
+  <span class="fn">--red</span><span class="p">:</span>      <span class="s">#b14b3c</span><span class="p">;</span>  <span class="c">/* overdue, error, failed */</span>
+
+  <span class="c">/* ── Typography ────────────────────────────── */</span>
+  <span class="fn">--sans</span><span class="p">:</span>  <span class="s">"Geist"</span><span class="p">,</span> ui-sans-serif<span class="p">,</span> system-ui<span class="p">,</span> sans-serif<span class="p">;</span>
+  <span class="fn">--mono</span><span class="p">:</span>  <span class="s">"Geist Mono"</span><span class="p">,</span> ui-monospace<span class="p">,</span> <span class="s">"SF Mono"</span><span class="p">,</span> Menlo<span class="p">,</span> monospace<span class="p">;</span>
+  <span class="fn">--serif</span><span class="p">:</span> <span class="s">"Instrument Serif"</span><span class="p">,</span> Georgia<span class="p">,</span> serif<span class="p">;</span> <span class="c">/* editorial only */</span>
+
+  <span class="c">/* ── Shadows ───────────────────────────────── */</span>
+  <span class="fn">--shadow-sm</span><span class="p">:</span>   <span class="s">0 1px 2px rgba(20,24,29,0.08)</span><span class="p">;</span>
+  <span class="fn">--shadow-md</span><span class="p">:</span>   <span class="s">0 4px 12px rgba(20,24,29,0.12)</span><span class="p">;</span>
+  <span class="fn">--shadow-card</span><span class="p">:</span> <span class="s">0 1px 0 rgba(20,24,29,0.02), 0 24px 60px -40px rgba(20,24,29,0.18)</span><span class="p">;</span>
+  <span class="fn">--focus-ring</span><span class="p">:</span>  <span class="s">0 0 0 3px rgba(47,111,181,0.18)</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c">/* ── Dark mode ─────────────────────────────── */</span>
+<span class="p">[</span><span class="fn">data-theme</span><span class="p">=</span><span class="s">"dark"</span><span class="p">]</span> <span class="p">{</span>
+  <span class="fn">--bg</span><span class="p">:</span>      <span class="s">#0f1216</span><span class="p">;</span>
+  <span class="fn">--bg-2</span><span class="p">:</span>    <span class="s">#14181d</span><span class="p">;</span>
+  <span class="fn">--paper</span><span class="p">:</span>   <span class="s">#1c2128</span><span class="p">;</span>
+  <span class="fn">--ink</span><span class="p">:</span>     <span class="s">#e7e3d7</span><span class="p">;</span>
+  <span class="fn">--ink-2</span><span class="p">:</span>   <span class="s">#cfd3dc</span><span class="p">;</span>
+  <span class="fn">--muted</span><span class="p">:</span>   <span class="s">#8a8f99</span><span class="p">;</span>
+  <span class="fn">--rule</span><span class="p">:</span>    <span class="s">#1c2128</span><span class="p">;</span>
+  <span class="fn">--rule-2</span><span class="p">:</span>  <span class="s">#2a2f37</span><span class="p">;</span>
+  <span class="fn">--pg</span><span class="p">:</span>      <span class="s">#6aaef0</span><span class="p">;</span>
+  <span class="fn">--pg-soft</span><span class="p">:</span> <span class="s">rgba(106,174,240,.14)</span><span class="p">;</span>
+  <span class="fn">--pg-deep</span><span class="p">:</span> <span class="s">#9ec1ed</span><span class="p">;</span>
+<span class="p">}</span></pre>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       2. TYPE SCALE
+       ══════════════════════════════════════════ -->
+  <section class="section" id="type-scale" data-screen-label="Type Scale">
+    <div class="section__header">
+      <span class="section__num">02</span>
+      <h2 class="section__title">Typography scale</h2>
+      <span class="section__sub">Geist sans · Geist Mono · 16px base</span>
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr>
+            <th>Role</th><th>Size</th><th>Weight</th><th>Line-h</th><th>Letter-sp</th><th>Font</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>Display</code></td><td>3.625rem · 58px</td><td>600</td><td>0.98</td><td>−0.035em</td><td>var(--sans)</td></tr>
+          <tr><td><code>h1</code></td><td>2.625rem · 42px</td><td>600</td><td>1.02</td><td>−0.030em</td><td>var(--sans)</td></tr>
+          <tr><td><code>h2</code></td><td>2.000rem · 32px</td><td>600</td><td>1.08</td><td>−0.025em</td><td>var(--sans)</td></tr>
+          <tr><td><code>h3</code></td><td>1.375rem · 22px</td><td>600</td><td>1.12</td><td>−0.020em</td><td>var(--sans)</td></tr>
+          <tr><td><code>h4</code></td><td>1.125rem · 18px</td><td>600</td><td>1.20</td><td>−0.015em</td><td>var(--sans)</td></tr>
+          <tr><td><code>body-lg</code></td><td>1.031rem · 16.5px</td><td>400</td><td>1.55</td><td>0</td><td>var(--sans)</td></tr>
+          <tr><td><code>body</code></td><td>0.906rem · 14.5px</td><td>400</td><td>1.55</td><td>0</td><td>var(--sans)</td></tr>
+          <tr><td><code>body-sm</code></td><td>0.813rem · 13px</td><td>400</td><td>1.50</td><td>0</td><td>var(--sans)</td></tr>
+          <tr><td><code>label</code></td><td>0.719rem · 11.5px</td><td>400</td><td>1</td><td>+0.10em UC</td><td>var(--mono)</td></tr>
+          <tr><td><code>code</code></td><td>0.781rem · 12.5px</td><td>400</td><td>1.60</td><td>0</td><td>var(--mono)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout--note">
+      <div class="callout__icon">i</div>
+      <div class="callout__body"><strong>Instrument Serif italic</strong> is editorial-only — used on the landing page headline. Never use it for UI labels or body copy in templates.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       3. SPACING
+       ══════════════════════════════════════════ -->
+  <section class="section" id="spacing" data-screen-label="Spacing">
+    <div class="section__header">
+      <span class="section__num">03</span>
+      <h2 class="section__title">Spacing scale</h2>
+      <span class="section__sub">4px base unit</span>
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Steps</th><th>px</th><th>rem</th><th>Common uses</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>4px</td><td>0.25rem</td><td>icon gap, tight badge padding</td></tr>
+          <tr><td>2</td><td>8px</td><td>0.50rem</td><td>inline element gap, checkbox gap</td></tr>
+          <tr><td>3</td><td>12px</td><td>0.75rem</td><td>button padding-inline, input padding</td></tr>
+          <tr><td>4</td><td>16px</td><td>1.00rem</td><td>card padding-inline, nav link padding</td></tr>
+          <tr><td>5</td><td>20px</td><td>1.25rem</td><td>form field gap</td></tr>
+          <tr><td>6</td><td>24px</td><td>1.50rem</td><td>card padding, section-card padding</td></tr>
+          <tr><td>8</td><td>32px</td><td>2.00rem</td><td>page horizontal padding (mobile)</td></tr>
+          <tr><td>10</td><td>40px</td><td>2.50rem</td><td>page top padding, section gap</td></tr>
+          <tr><td>12</td><td>48px</td><td>3.00rem</td><td>section margin-bottom</td></tr>
+          <tr><td>16</td><td>64px</td><td>4.00rem</td><td>large section top padding</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>Token</th><th>Value</th><th>Used on</th></tr></thead>
+        <tbody>
+          <tr><td><code>--radius-xs</code></td><td>4px</td><td>micro chips, code inline</td></tr>
+          <tr><td><code>--radius-sm</code></td><td>6px</td><td>small tags, kbd elements</td></tr>
+          <tr><td><code>--radius-base</code></td><td>8px</td><td>nav links, icon buttons</td></tr>
+          <tr><td><code>--radius-md</code></td><td>10px</td><td>banners, worker bar, callouts</td></tr>
+          <tr><td><code>--radius-lg</code></td><td>12px</td><td>tables, result boxes</td></tr>
+          <tr><td><code>--radius-xl</code></td><td>14px</td><td>settings cards, stat cards</td></tr>
+          <tr><td><code>--radius-2xl</code></td><td>16px</td><td>auth form card, modal-like panels</td></tr>
+          <tr><td><code>--radius-pill</code></td><td>999px</td><td>badges, status pills, distribution bar</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       4. NAV HTML
+       ══════════════════════════════════════════ -->
+  <section class="section" id="nav" data-screen-label="Nav HTML">
+    <div class="section__header">
+      <span class="section__num">04</span>
+      <h2 class="section__title">Global nav — <code>base.html</code></h2>
+      <span class="section__sub">Django template · no JS</span>
+    </div>
+    <p>The nav shell lives in <code>templates/base.html</code> and is extended by every page template. Active state is detected via <code>request.resolver_match.app_name</code> — set <code>app_name</code> in each app's <code>urls.py</code>.</p>
+
+    <div class="codeblock">
+      <div class="codeblock__head">
+        <span>templates/base.html</span>
+        <span class="codeblock__lang">HTML + Django</span>
+      </div>
+<pre><span class="t">&lt;!doctype html&gt;</span>
+<span class="t">&lt;html</span> <span class="fn">lang</span><span class="p">=</span><span class="s">"en"</span><span class="t">&gt;</span>
+<span class="t">&lt;head&gt;</span>
+  <span class="t">&lt;meta</span> <span class="fn">charset</span><span class="p">=</span><span class="s">"utf-8"</span><span class="t">/&gt;</span>
+  <span class="t">&lt;meta</span> <span class="fn">name</span><span class="p">=</span><span class="s">"viewport"</span> <span class="fn">content</span><span class="p">=</span><span class="s">"width=device-width, initial-scale=1"</span><span class="t">/&gt;</span>
+  <span class="t">&lt;title&gt;</span><span class="p">{% block title %}pgstack{% endblock %}</span><span class="t">&lt;/title&gt;</span>
+  <span class="t">&lt;link</span> <span class="fn">rel</span><span class="p">=</span><span class="s">"stylesheet"</span> <span class="fn">href</span><span class="p">=</span><span class="s">"{% static 'css/base.css' %}"</span><span class="t">/&gt;</span>
+  <span class="p">{% block extra_head %}{% endblock %}</span>
+<span class="t">&lt;/head&gt;</span>
+<span class="t">&lt;body&gt;</span>
+
+<span class="t">&lt;nav</span> <span class="fn">class</span><span class="p">=</span><span class="s">"site-nav"</span> <span class="fn">aria-label</span><span class="p">=</span><span class="s">"Main navigation"</span><span class="t">&gt;</span>
+  <span class="t">&lt;div</span> <span class="fn">class</span><span class="p">=</span><span class="s">"site-nav__inner"</span><span class="t">&gt;</span>
+
+    <span class="c">&lt;!-- Wordmark --&gt;</span>
+    <span class="t">&lt;a</span> <span class="fn">href</span><span class="p">=</span><span class="s">"{% url 'todos:index' %}"</span> <span class="fn">class</span><span class="p">=</span><span class="s">"site-nav__brand"</span><span class="t">&gt;</span>
+      <span class="t">&lt;span</span> <span class="fn">class</span><span class="p">=</span><span class="s">"brand-mark"</span> <span class="fn">aria-hidden</span><span class="p">=</span><span class="s">"true"</span><span class="t">&gt;</span>pg<span class="t">&lt;/span&gt;</span>
+      <span class="t">&lt;span</span> <span class="fn">class</span><span class="p">=</span><span class="s">"brand-name"</span><span class="t">&gt;</span>pgstack<span class="t">&lt;/span&gt;</span>
+      <span class="t">&lt;span</span> <span class="fn">class</span><span class="p">=</span><span class="s">"brand-version"</span> <span class="fn">aria-hidden</span><span class="p">=</span><span class="s">"true"</span><span class="t">&gt;</span>v0.1<span class="t">&lt;/span&gt;</span>
+    <span class="t">&lt;/a&gt;</span>
+
+    <span class="c">&lt;!-- Page links — active class via app_name --&gt;</span>
+    <span class="t">&lt;ul</span> <span class="fn">class</span><span class="p">=</span><span class="s">"site-nav__links"</span> <span class="fn">role</span><span class="p">=</span><span class="s">"list"</span><span class="t">&gt;</span>
+      <span class="p">{% with app=request.resolver_match.app_name %}</span>
+      <span class="t">&lt;li&gt;&lt;a</span> <span class="fn">href</span><span class="p">=</span><span class="s">"{% url 'todos:index' %}"</span>
+             <span class="fn">class</span><span class="p">=</span><span class="s">"site-nav__link {% if app == 'todos' %}is-active{% endif %}"</span><span class="t">&gt;</span>
+        Todos<span class="t">&lt;/a&gt;&lt;/li&gt;</span>
+      <span class="t">&lt;li&gt;&lt;a</span> <span class="fn">href</span><span class="p">=</span><span class="s">"{% url 'search:index' %}"</span>
+             <span class="fn">class</span><span class="p">=</span><span class="s">"site-nav__link {% if app == 'search' %}is-active{% endif %}"</span><span class="t">&gt;</span>
+        Search<span class="t">&lt;/a&gt;&lt;/li&gt;</span>
+      <span class="t">&lt;li&gt;&lt;a</span> <span class="fn">href</span><span class="p">=</span><span class="s">"{% url 'users:search' %}"</span>
+             <span class="fn">class</span><span class="p">=</span><span class="s">"site-nav__link {% if app == 'users' %}is-active{% endif %}"</span><span class="t">&gt;</span>
+        Users<span class="t">&lt;/a&gt;&lt;/li&gt;</span>
+      <span class="t">&lt;li&gt;&lt;a</span> <span class="fn">href</span><span class="p">=</span><span class="s">"{% url 'dashboard:index' %}"</span>
+             <span class="fn">class</span><span class="p">=</span><span class="s">"site-nav__link {% if app == 'dashboard' %}is-active{% endif %}"</span><span class="t">&gt;</span>
+        Dashboard<span class="t">&lt;/a&gt;&lt;/li&gt;</span>
+      <span class="t">&lt;li&gt;&lt;a</span> <span class="fn">href</span><span class="p">=</span><span class="s">"{% url 'queue:index' %}"</span>
+             <span class="fn">class</span><span class="p">=</span><span class="s">"site-nav__link {% if app == 'queue' %}is-active{% endif %}"</span><span class="t">&gt;</span>
+        Queue<span class="t">&lt;/a&gt;&lt;/li&gt;</span>
+      <span class="t">&lt;li&gt;&lt;a</span> <span class="fn">href</span><span class="p">=</span><span class="s">"{% url 'settings:index' %}"</span>
+             <span class="fn">class</span><span class="p">=</span><span class="s">"site-nav__link {% if app == 'settings' %}is-active{% endif %}"</span><span class="t">&gt;</span>
+        Settings<span class="t">&lt;/a&gt;&lt;/li&gt;</span>
+      <span class="p">{% endwith %}</span>
+    <span class="t">&lt;/ul&gt;</span>
+
+    <span class="c">&lt;!-- Auth area --&gt;</span>
+    <span class="t">&lt;div</span> <span class="fn">class</span><span class="p">=</span><span class="s">"site-nav__auth"</span><span class="t">&gt;</span>
+      <span class="p">{% if user.is_authenticated %}</span>
+        <span class="t">&lt;span</span> <span class="fn">class</span><span class="p">=</span><span class="s">"site-nav__avatar"</span> <span class="fn">aria-hidden</span><span class="p">=</span><span class="s">"true"</span><span class="t">&gt;</span>
+          <span class="p">{{ user.username|slice:":2"|upper }}</span>
+        <span class="t">&lt;/span&gt;</span>
+        <span class="t">&lt;span</span> <span class="fn">class</span><span class="p">=</span><span class="s">"site-nav__username"</span><span class="t">&gt;</span><span class="p">{{ user.username }}</span><span class="t">&lt;/span&gt;</span>
+        <span class="t">&lt;form</span> <span class="fn">method</span><span class="p">=</span><span class="s">"post"</span> <span class="fn">action</span><span class="p">=</span><span class="s">"{% url 'auth:logout' %}"</span><span class="t">&gt;</span>
+          <span class="p">{% csrf_token %}</span>
+          <span class="t">&lt;button</span> <span class="fn">type</span><span class="p">=</span><span class="s">"submit"</span> <span class="fn">class</span><span class="p">=</span><span class="s">"btn btn--sm"</span><span class="t">&gt;</span>Log out<span class="t">&lt;/button&gt;</span>
+        <span class="t">&lt;/form&gt;</span>
+      <span class="p">{% else %}</span>
+        <span class="t">&lt;a</span> <span class="fn">href</span><span class="p">=</span><span class="s">"{% url 'auth:login' %}"</span> <span class="fn">class</span><span class="p">=</span><span class="s">"site-nav__link"</span><span class="t">&gt;</span>Log in<span class="t">&lt;/a&gt;</span>
+        <span class="t">&lt;a</span> <span class="fn">href</span><span class="p">=</span><span class="s">"{% url 'auth:register' %}"</span> <span class="fn">class</span><span class="p">=</span><span class="s">"btn btn--primary btn--sm"</span><span class="t">&gt;</span>Register<span class="t">&lt;/a&gt;</span>
+      <span class="p">{% endif %}</span>
+    <span class="t">&lt;/div&gt;</span>
+
+  <span class="t">&lt;/div&gt;</span>
+<span class="t">&lt;/nav&gt;</span>
+
+<span class="c">&lt;!-- Django messages — rendered once per page --&gt;</span>
+<span class="p">{% if messages %}</span>
+<span class="t">&lt;div</span> <span class="fn">class</span><span class="p">=</span><span class="s">"messages-container"</span> <span class="fn">role</span><span class="p">=</span><span class="s">"status"</span> <span class="fn">aria-live</span><span class="p">=</span><span class="s">"polite"</span><span class="t">&gt;</span>
+  <span class="p">{% for message in messages %}</span>
+  <span class="t">&lt;div</span> <span class="fn">class</span><span class="p">=</span><span class="s">"msg-banner msg-banner--{{ message.tags }}"</span><span class="t">&gt;</span>
+    <span class="t">&lt;span</span> <span class="fn">class</span><span class="p">=</span><span class="s">"msg-banner__icon"</span> <span class="fn">aria-hidden</span><span class="p">=</span><span class="s">"true"</span><span class="t">&gt;&lt;/span&gt;</span>
+    <span class="t">&lt;span</span> <span class="fn">class</span><span class="p">=</span><span class="s">"msg-banner__text"</span><span class="t">&gt;</span><span class="p">{{ message }}</span><span class="t">&lt;/span&gt;</span>
+  <span class="t">&lt;/div&gt;</span>
+  <span class="p">{% endfor %}</span>
+<span class="t">&lt;/div&gt;</span>
+<span class="p">{% endif %}</span>
+
+<span class="t">&lt;main</span> <span class="fn">class</span><span class="p">=</span><span class="s">"page-content"</span><span class="t">&gt;</span>
+  <span class="p">{% block content %}{% endblock %}</span>
+<span class="t">&lt;/main&gt;</span>
+
+<span class="p">{% block extra_js %}{% endblock %}</span>
+<span class="t">&lt;/body&gt;&lt;/html&gt;</span></pre>
+    </div>
+
+    <div class="callout callout--info">
+      <div class="callout__icon">i</div>
+      <div class="callout__body"><strong>app_name requirement</strong> — each Django app's <code>urls.py</code> must declare <code>app_name = 'todos'</code> (or search / users / dashboard / queue / settings) for the active-link detection to work.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       5. BADGES
+       ══════════════════════════════════════════ -->
+  <section class="section" id="badges" data-screen-label="Badges">
+    <div class="section__header">
+      <span class="section__num">05</span>
+      <h2 class="section__title">Badge class names</h2>
+      <span class="section__sub">Todo status · Job queue</span>
+    </div>
+
+    <div class="badge-row">
+      <span class="bdg bdg--pending">Pending</span>
+      <span class="bdg bdg--done">Done</span>
+      <span class="bdg bdg--overdue">Overdue</span>
+      <span class="bdg bdg--queued">Queued</span>
+      <span class="bdg bdg--processing">Processing</span>
+      <span class="bdg bdg--failed">Failed</span>
+    </div>
+
+    <div class="codeblock">
+      <div class="codeblock__head">
+        <span>templates/partials/badge.html (include)</span>
+        <span class="codeblock__lang">HTML + Django</span>
+      </div>
+<pre><span class="c">&lt;!-- {% include 'partials/badge.html' with status=todo.status %} --&gt;</span>
+<span class="t">&lt;span</span> <span class="fn">class</span><span class="p">=</span><span class="s">"badge badge--{{ status|lower }}"</span><span class="t">&gt;</span>
+  <span class="p">{{ status }}</span>
+<span class="t">&lt;/span&gt;</span></pre>
+    </div>
+
+    <div class="codeblock">
+      <div class="codeblock__head"><span>static/css/badges.css</span><span class="codeblock__lang">CSS</span></div>
+<pre><span class="c">/* ── Base ── */</span>
+<span class="fn">.badge</span> <span class="p">{</span>
+  <span class="fn">display</span><span class="p">:</span> inline-flex<span class="p">;</span>
+  <span class="fn">align-items</span><span class="p">:</span> center<span class="p">;</span>
+  <span class="fn">gap</span><span class="p">:</span> <span class="v">6px</span><span class="p">;</span>
+  <span class="fn">padding</span><span class="p">:</span> <span class="v">3px 10px 3px 8px</span><span class="p">;</span>
+  <span class="fn">border-radius</span><span class="p">:</span> <span class="v">999px</span><span class="p">;</span>
+  <span class="fn">font-family</span><span class="p">:</span> var(--mono)<span class="p">;</span>
+  <span class="fn">font-size</span><span class="p">:</span> <span class="v">0.719rem</span><span class="p">;</span>  <span class="c">/* 11.5px */</span>
+  <span class="fn">font-weight</span><span class="p">:</span> <span class="v">500</span><span class="p">;</span>
+  <span class="fn">letter-spacing</span><span class="p">:</span> <span class="v">0.04em</span><span class="p">;</span>
+  <span class="fn">white-space</span><span class="p">:</span> nowrap<span class="p">;</span>
+<span class="p">}</span>
+<span class="fn">.badge::before</span> <span class="p">{</span>
+  <span class="fn">content</span><span class="p">:</span> <span class="s">""</span><span class="p">;</span>
+  <span class="fn">width</span><span class="p">:</span> <span class="v">7px</span><span class="p">;</span> <span class="fn">height</span><span class="p">:</span> <span class="v">7px</span><span class="p">;</span>
+  <span class="fn">border-radius</span><span class="p">:</span> <span class="v">50%</span><span class="p">;</span>
+  <span class="fn">background</span><span class="p">:</span> currentColor<span class="p">;</span>
+  <span class="fn">flex-shrink</span><span class="p">:</span> <span class="v">0</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c">/* ── Todo statuses ── */</span>
+<span class="fn">.badge--pending</span> <span class="p">{</span>
+  <span class="fn">background</span><span class="p">:</span> var(--bg-2)<span class="p">;</span>
+  <span class="fn">border</span><span class="p">:</span> <span class="v">1px solid</span> var(--rule-2)<span class="p">;</span>
+  <span class="fn">color</span><span class="p">:</span> var(--muted)<span class="p">;</span>
+<span class="p">}</span>
+<span class="fn">.badge--done</span> <span class="p">{</span>
+  <span class="fn">background</span><span class="p">:</span> <span class="s">rgba(61,122,74,.10)</span><span class="p">;</span>
+  <span class="fn">border</span><span class="p">:</span> <span class="v">1px solid rgba(61,122,74,.28)</span><span class="p">;</span>
+  <span class="fn">color</span><span class="p">:</span> var(--green)<span class="p">;</span>
+<span class="p">}</span>
+<span class="fn">.badge--overdue</span> <span class="p">{</span>
+  <span class="fn">background</span><span class="p">:</span> <span class="s">rgba(177,75,60,.09)</span><span class="p">;</span>
+  <span class="fn">border</span><span class="p">:</span> <span class="v">1px solid rgba(177,75,60,.28)</span><span class="p">;</span>
+  <span class="fn">color</span><span class="p">:</span> var(--red)<span class="p">;</span>
+<span class="p">}</span>
+
+<span class="c">/* ── Job queue statuses ── */</span>
+<span class="fn">.badge--queued</span> <span class="p">{</span>
+  <span class="fn">background</span><span class="p">:</span> var(--bg-2)<span class="p">;</span>
+  <span class="fn">border</span><span class="p">:</span> <span class="v">1px solid</span> var(--rule-2)<span class="p">;</span>
+  <span class="fn">color</span><span class="p">:</span> var(--muted)<span class="p">;</span>
+<span class="p">}</span>
+<span class="fn">.badge--processing</span> <span class="p">{</span>
+  <span class="fn">background</span><span class="p">:</span> <span class="s">rgba(185,125,42,.10)</span><span class="p">;</span>
+  <span class="fn">border</span><span class="p">:</span> <span class="v">1px solid rgba(185,125,42,.30)</span><span class="p">;</span>
+  <span class="fn">color</span><span class="p">:</span> var(--amber)<span class="p">;</span>
+<span class="p">}</span>
+<span class="fn">.badge--processing::before</span> <span class="p">{</span>
+  <span class="fn">animation</span><span class="p">:</span> pulse-dot <span class="v">1.4s ease-in-out infinite</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="fn">@keyframes</span> pulse-dot <span class="p">{</span>
+  <span class="v">0%</span><span class="p">,</span><span class="v">100%</span> <span class="p">{</span> <span class="fn">opacity</span><span class="p">:</span> <span class="v">1</span><span class="p">; }</span>
+  <span class="v">50%</span>      <span class="p">{</span> <span class="fn">opacity</span><span class="p">:</span> <span class="v">.35</span><span class="p">; }</span>
+<span class="p">}</span>
+<span class="fn">.badge--failed</span> <span class="p">{</span>
+  <span class="fn">background</span><span class="p">:</span> <span class="s">rgba(177,75,60,.09)</span><span class="p">;</span>
+  <span class="fn">border</span><span class="p">:</span> <span class="v">1px solid rgba(177,75,60,.28)</span><span class="p">;</span>
+  <span class="fn">color</span><span class="p">:</span> var(--red)<span class="p">;</span>
+<span class="p">}</span></pre>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       6. FORMS
+       ══════════════════════════════════════════ -->
+  <section class="section" id="forms" data-screen-label="Forms">
+    <div class="section__header">
+      <span class="section__num">06</span>
+      <h2 class="section__title">Form patterns</h2>
+      <span class="section__sub">Inputs · errors · FTS highlight</span>
+    </div>
+
+    <div class="codeblock">
+      <div class="codeblock__head"><span>templates/partials/form_field.html</span><span class="codeblock__lang">HTML + Django</span></div>
+<pre><span class="c">&lt;!--
+  Usage: {% include 'partials/form_field.html' with field=form.title %}
+  Works for any BoundField — renders label, input, and errors.
+--&gt;</span>
+<span class="t">&lt;div</span> <span class="fn">class</span><span class="p">=</span><span class="s">"field {% if field.errors %}field--error{% endif %}"</span><span class="t">&gt;</span>
+  <span class="t">&lt;label</span> <span class="fn">class</span><span class="p">=</span><span class="s">"field__label"</span> <span class="fn">for</span><span class="p">=</span><span class="s">"{{ field.id_for_label }}"</span><span class="t">&gt;</span>
+    <span class="p">{{ field.label }}</span>
+  <span class="t">&lt;/label&gt;</span>
+  <span class="p">{{ field }}</span>  <span class="c">&lt;!-- Django renders &lt;input&gt; here; add widget attrs in forms.py --&gt;</span>
+  <span class="p">{% for error in field.errors %}</span>
+  <span class="t">&lt;p</span> <span class="fn">class</span><span class="p">=</span><span class="s">"field__error"</span> <span class="fn">role</span><span class="p">=</span><span class="s">"alert"</span><span class="t">&gt;</span>
+    <span class="t">&lt;span</span> <span class="fn">aria-hidden</span><span class="p">=</span><span class="s">"true"</span><span class="t">&gt;</span>⚠<span class="t">&lt;/span&gt;</span> <span class="p">{{ error }}</span>
+  <span class="t">&lt;/p&gt;</span>
+  <span class="p">{% endfor %}</span>
+<span class="t">&lt;/div&gt;</span></pre>
+    </div>
+
+    <div class="codeblock">
+      <div class="codeblock__head"><span>templates/partials/non_field_errors.html</span><span class="codeblock__lang">HTML + Django</span></div>
+<pre><span class="p">{% if form.non_field_errors %}</span>
+<span class="t">&lt;div</span> <span class="fn">class</span><span class="p">=</span><span class="s">"msg-banner msg-banner--error"</span> <span class="fn">role</span><span class="p">=</span><span class="s">"alert"</span><span class="t">&gt;</span>
+  <span class="t">&lt;span</span> <span class="fn">class</span><span class="p">=</span><span class="s">"msg-banner__icon"</span> <span class="fn">aria-hidden</span><span class="p">=</span><span class="s">"true"</span><span class="t">&gt;</span>✕<span class="t">&lt;/span&gt;</span>
+  <span class="t">&lt;ul</span> <span class="fn">class</span><span class="p">=</span><span class="s">"msg-banner__text"</span><span class="t">&gt;</span>
+    <span class="p">{% for error in form.non_field_errors %}</span>
+    <span class="t">&lt;li&gt;</span><span class="p">{{ error }}</span><span class="t">&lt;/li&gt;</span>
+    <span class="p">{% endfor %}</span>
+  <span class="t">&lt;/ul&gt;</span>
+<span class="t">&lt;/div&gt;</span>
+<span class="p">{% endif %}</span></pre>
+    </div>
+
+    <div class="codeblock">
+      <div class="codeblock__head"><span>FTS headline — ts_headline markup in templates</span><span class="codeblock__lang">HTML + Django</span></div>
+<pre><span class="c">&lt;!--
+  todo.headline is a SearchHeadline annotation from the view.
+  Django's |safe filter is required; ts_headline wraps matching
+  terms in &lt;b&gt; by default — remap to &lt;mark&gt; via HeadlineOptions
+  or override with CSS on &lt;b&gt; within .search-snippet.
+--&gt;</span>
+<span class="t">&lt;div</span> <span class="fn">class</span><span class="p">=</span><span class="s">"search-result"</span><span class="t">&gt;</span>
+  <span class="t">&lt;a</span> <span class="fn">href</span><span class="p">=</span><span class="s">"{% url 'todos:detail' todo.pk %}"</span> <span class="fn">class</span><span class="p">=</span><span class="s">"search-result__title"</span><span class="t">&gt;</span>
+    <span class="p">{{ todo.title }}</span>
+  <span class="t">&lt;/a&gt;</span>
+  <span class="t">&lt;p</span> <span class="fn">class</span><span class="p">=</span><span class="s">"search-result__snippet"</span><span class="t">&gt;</span>
+    <span class="p">{{ todo.headline|safe }}</span>
+  <span class="t">&lt;/p&gt;</span>
+<span class="t">&lt;/div&gt;</span>
+
+<span class="c">/* CSS — highlight matched terms */</span>
+<span class="fn">.search-result__snippet</span> b <span class="p">{</span>
+  <span class="fn">background</span><span class="p">:</span> <span class="s">#fef3c7</span><span class="p">;</span>
+  <span class="fn">color</span><span class="p">:</span> <span class="s">#7c4500</span><span class="p">;</span>
+  <span class="fn">font-weight</span><span class="p">:</span> <span class="v">500</span><span class="p">;</span>
+  <span class="fn">padding</span><span class="p">:</span> <span class="v">0 2px</span><span class="p">;</span>
+  <span class="fn">border-radius</span><span class="p">:</span> <span class="v">3px</span><span class="p">;</span>
+<span class="p">}</span></pre>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       7. DJANGO MESSAGES
+       ══════════════════════════════════════════ -->
+  <section class="section" id="messages" data-screen-label="Messages">
+    <div class="section__header">
+      <span class="section__num">07</span>
+      <h2 class="section__title">Django messages → banner CSS</h2>
+      <span class="section__sub">messages.SUCCESS / INFO / WARNING / ERROR</span>
+    </div>
+
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr><th>messages level</th><th>CSS class</th><th>Left border</th><th>Icon</th></tr></thead>
+        <tbody>
+          <tr><td><code>messages.SUCCESS</code></td><td><code>.msg-banner--success</code></td><td style="color:var(--green)">var(--green)</td><td>✓</td></tr>
+          <tr><td><code>messages.INFO</code></td><td><code>.msg-banner--info</code></td><td style="color:var(--pg)">var(--pg)</td><td>i</td></tr>
+          <tr><td><code>messages.WARNING</code></td><td><code>.msg-banner--warning</code></td><td style="color:var(--amber)">var(--amber)</td><td>⚠</td></tr>
+          <tr><td><code>messages.ERROR</code></td><td><code>.msg-banner--error</code></td><td style="color:var(--red)">var(--red)</td><td>✕</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout--info">
+      <div class="callout__icon">i</div>
+      <div class="callout__body"><strong>message.tags</strong> — Django appends the level name to <code>message.tags</code> automatically (e.g. <code>"success"</code>). The template snippet in §04 uses <code>msg-banner--{{ message.tags }}</code> directly.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       8. RENDERING MATRIX
+       ══════════════════════════════════════════ -->
+  <section class="section" id="rendering" data-screen-label="Rendering">
+    <div class="section__header">
+      <span class="section__num">08</span>
+      <h2 class="section__title">Rendering matrix</h2>
+      <span class="section__sub">Server-rendered vs client-only</span>
+    </div>
+    <p>Every page is <strong>server-rendered</strong> via Django views and templates. The single exception is the live todo list, which uses a WebSocket for real-time updates — all other interactivity is standard HTTP form posts.</p>
+
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead>
+          <tr><th>Template / Component</th><th>Route</th><th>Rendering</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Landing page</strong></td>
+            <td><code>/</code></td>
+            <td><span class="pill pill--server">Server</span></td>
+            <td>Static — redirects to login if unauthenticated</td>
+          </tr>
+          <tr>
+            <td><strong>Log in</strong></td>
+            <td><code>/auth/login/</code></td>
+            <td><span class="pill pill--server">Server</span></td>
+            <td><code>django.contrib.auth.views.LoginView</code></td>
+          </tr>
+          <tr>
+            <td><strong>Register</strong></td>
+            <td><code>/auth/signup/</code></td>
+            <td><span class="pill pill--server">Server</span></td>
+            <td>Custom view using extended <code>UserCreationForm</code></td>
+          </tr>
+          <tr>
+            <td><strong>Todo list (index)</strong></td>
+            <td><code>/todos/</code></td>
+            <td><span class="pill pill--server">Server</span> + <span class="pill pill--client">WS</span></td>
+            <td>Initial render is server-side; a small inline <code>&lt;script&gt;</code> opens a WebSocket and prepends new todos via <code>insertAdjacentHTML</code> on <code>LISTEN/NOTIFY</code> push. <strong>Only page with any client JS.</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Search todos</strong></td>
+            <td><code>/search/</code></td>
+            <td><span class="pill pill--server">Server</span></td>
+            <td>GET form — results rendered server-side with <code>ts_headline</code></td>
+          </tr>
+          <tr>
+            <td><strong>Dashboard</strong></td>
+            <td><code>/dashboard/</code></td>
+            <td><span class="pill pill--server">Server</span></td>
+            <td>Reads <code>todo_stats</code> materialized view — no polling, no JS</td>
+          </tr>
+          <tr>
+            <td><strong>Queue monitor</strong></td>
+            <td><code>/queue/</code></td>
+            <td><span class="pill pill--server">Server</span></td>
+            <td>Simple queryset — page must be manually refreshed to see updates</td>
+          </tr>
+          <tr>
+            <td><strong>Find users</strong></td>
+            <td><code>/users/search/</code></td>
+            <td><span class="pill pill--server">Server</span></td>
+            <td>GET form — <code>username__icontains</code> query</td>
+          </tr>
+          <tr>
+            <td><strong>Public todo list</strong></td>
+            <td><code>/users/&lt;username&gt;/todos/</code></td>
+            <td><span class="pill pill--server">Server</span></td>
+            <td>Scoped search via GET; returns 403 if profile is private</td>
+          </tr>
+          <tr>
+            <td><strong>Settings</strong></td>
+            <td><code>/settings/</code></td>
+            <td><span class="pill pill--server">Server</span></td>
+            <td>POST form; success shown via <code>messages.SUCCESS</code></td>
+          </tr>
+          <tr>
+            <td><strong>Nav shell</strong></td>
+            <td>all pages</td>
+            <td><span class="pill pill--server">Server</span></td>
+            <td><code>{% if user.is_authenticated %}</code> controls auth area; active link via <code>app_name</code></td>
+          </tr>
+          <tr>
+            <td><strong>Status / job badges</strong></td>
+            <td>all pages</td>
+            <td><span class="pill pill--server">Server</span></td>
+            <td>Pure CSS — <code>.badge--{{ status|lower }}</code> from template tag</td>
+          </tr>
+          <tr>
+            <td><strong>FTS highlight</strong></td>
+            <td>search pages</td>
+            <td><span class="pill pill--server">Server</span></td>
+            <td><code>SearchHeadline</code> annotation → <code>{{ headline|safe }}</code> → CSS on <code>&lt;b&gt;</code></td>
+          </tr>
+          <tr>
+            <td><strong>WebSocket (live todos)</strong></td>
+            <td><code>/ws/todos/</code></td>
+            <td><span class="pill pill--client">Client</span></td>
+            <td>~20 lines of vanilla JS in <code>{% block extra_js %}</code> on <code>todos/index.html</code> only. No framework. Opens connection, handles <code>onmessage</code>, calls <code>insertAdjacentHTML</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout callout--warning">
+      <div class="callout__icon">!</div>
+      <div class="callout__body">
+        <strong>WebSocket scope</strong> — the Channels consumer at <code>/ws/todos/</code> is scoped to the authenticated user's own todos. It does not broadcast across users. The ASGI worker (Daphne) must be running; the standard <code>runserver</code> does not support WebSockets.
+      </div>
+    </div>
+
+    <div class="codeblock">
+      <div class="codeblock__head"><span>templates/todos/index.html — WebSocket snippet (the only client JS)</span><span class="codeblock__lang">JS</span></div>
+<pre><span class="p">{% block extra_js %}</span>
+<span class="t">&lt;script&gt;</span>
+<span class="c">// Vanilla JS — no framework. Opens WS, prepends new todos on notify.</span>
+(<span class="k">function</span> () {
+  <span class="k">const</span> <span class="n">list</span>   = document.<span class="fn">getElementById</span>(<span class="s">'todo-list'</span>);
+  <span class="k">const</span> <span class="n">scheme</span> = location.protocol === <span class="s">'https:'</span> ? <span class="s">'wss'</span> : <span class="s">'ws'</span>;
+  <span class="k">const</span> <span class="n">ws</span>     = <span class="k">new</span> <span class="fn">WebSocket</span>(<span class="s">`${scheme}://${location.host}/ws/todos/`</span>);
+
+  ws.<span class="fn">onmessage</span> = <span class="k">function</span> (e) {
+    <span class="k">const</span> <span class="n">todo</span> = <span class="fn">JSON</span>.<span class="fn">parse</span>(e.data);
+    <span class="c">// Build a minimal row; full render is still server-side on refresh.</span>
+    <span class="k">const</span> <span class="n">html</span> = <span class="s">`
+      &lt;li class="todo-row todo-row--new" id="todo-${todo.id}"&gt;
+        &lt;span class="todo-row__title"&gt;${todo.title}&lt;/span&gt;
+        &lt;span class="badge badge--pending"&gt;Pending&lt;/span&gt;
+      &lt;/li&gt;`</span>;
+    list.<span class="fn">insertAdjacentHTML</span>(<span class="s">'afterbegin'</span>, html);
+  };
+}());
+<span class="t">&lt;/script&gt;</span>
+<span class="p">{% endblock %}</span></pre>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="doc-footer">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:22px;height:22px;border-radius:6px;background:var(--ink);color:var(--paper);display:grid;place-items:center;font-family:var(--mono);font-weight:700;font-size:11px;">pg</div>
+      <span>pgstack Implementation Handoff · v0.1.0 · June 2026</span>
+    </div>
+    <div style="display:flex;gap:18px;">
+      <span>Django 5 · Channels 4 · PostgreSQL 16</span>
+      <span>MIT licensed</span>
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>

@@ -26,6 +26,13 @@
 | PR 15  | Phase 7 | SKIP LOCKED — queue monitor view + template     |
 | PR 16  | Phase 8 | MVT wiring — base template + nav + index view   |
 | PR 17  | Phase 8 | Demo polish + README                            |
+| PR 18  | Phase 9 | Design — CSS tokens + badge system + static setup |
+| PR 19  | Phase 9 | Design — base.html redesign + partials          |
+| PR 20  | Phase 9 | Design — Landing + Index page                   |
+| PR 21  | Phase 9 | Design — Auth pages (login + signup)            |
+| PR 22  | Phase 9 | Design — Dashboard + Queue monitor              |
+| PR 23  | Phase 9 | Design — Search + Users pages                   |
+| PR 24  | Phase 9 | Design — Settings + system states               |
 
 ---
 
@@ -361,21 +368,231 @@ Do this after PR 07 so signup can create `User` rows aligned with Django auth an
 
 ### PR 17 — Demo polish + README
 
-- [ ] `README.md`
-  - [ ] What pgstack is + the four things Postgres replaces
-  - [ ] Prerequisites: Docker + Docker Compose only
-  - [ ] Setup: `docker compose up`
-  - [ ] Demo script (auth + 4 Postgres feature steps)
-  - [ ] Explain that Todos are user-owned and Todo lists are private by default
-- [ ] Demo smoke test (run entirely via `docker compose up`)
-  - [ ] Register/login as two users
-  - [ ] User A creates private Todos; User B cannot view them
-  - [ ] User A makes Todo list public; User B can find User A by username and view the public list
-  - [ ] Two tabs: create todo in tab A → appears in tab B (LISTEN/NOTIFY)
-  - [ ] `/search/` returns ranked highlighted results for the authenticated user's visible Todo set (FTS)
-  - [ ] `/dashboard/` shows live counts scoped to the authenticated user or viewed public user (materialized view)
-  - [ ] `/queue/` shows jobs processed by concurrent workers without leaking other users' private Todos (SKIP LOCKED)
-- [ ] Final check: `docker compose down -v && docker compose up --build` from scratch, all features work
+- [x] `README.md`
+  - [x] What pgstack is + the four things Postgres replaces
+  - [x] Prerequisites: Docker + Docker Compose only
+  - [x] Setup: `docker compose up`
+  - [x] Demo script (auth + 4 Postgres feature steps)
+  - [x] Explain that Todos are user-owned and Todo lists are private by default
+- [x] Demo smoke test (run entirely via `docker compose up`)
+  - [x] Register/login as two users
+  - [x] User A creates private Todos; User B cannot view them
+  - [x] User A makes Todo list public; User B can find User A by username and view the public list
+  - [x] Two tabs: create todo in tab A → appears in tab B (LISTEN/NOTIFY)
+  - [x] `/search/` returns ranked highlighted results for the authenticated user's visible Todo set (FTS)
+  - [x] `/dashboard/` shows live counts scoped to the authenticated user or viewed public user (materialized view)
+  - [x] `/queue/` shows jobs processed by concurrent workers without leaking other users' private Todos (SKIP LOCKED)
+- [x] Final check: `docker compose down -v && docker compose up --build` from scratch, all features work
+
+---
+
+## Phase 9 — Design system implementation
+
+> Apply the design system from `design/` to every Django template. No React, no build step — plain server-rendered HTML extending `base.html` with CSS custom properties from `static/css/base.css`. Source of truth for every visual detail is `design/Design System.html` and `design/Implementation Handoff.html`.
+
+### PR 18 — Design: CSS tokens + badge system + static setup
+
+> Foundation layer. Everything else in Phase 9 depends on this landing first.
+
+- [ ] Create `static/css/base.css`
+  - [ ] `:root` block with all 18 light-mode tokens (`--bg`, `--bg-2`, `--paper`, `--ink`, `--ink-2`, `--muted`, `--rule`, `--rule-2`, `--pg`, `--pg-deep`, `--pg-soft`, `--green`, `--amber`, `--red`, `--sans`, `--mono`, `--serif`)
+  - [ ] Shadow variables: `--shadow-sm`, `--shadow-md`, `--shadow-card`, `--focus-ring`
+  - [ ] Radius variables: `--radius-xs` (4px) through `--radius-2xl` (16px) and `--radius-pill` (999px)
+  - [ ] Dark mode block: `[data-theme="dark"]` overrides for all surface/ink/accent tokens (see `design/Design System.html` §Dark mode tokens and `design/Implementation Handoff.html` §01)
+  - [ ] Global reset: `*, *::before, *::after { box-sizing: border-box; }`, body font/color/background wired to tokens
+  - [ ] `@keyframes pulse-dot { 0%,100% { opacity:1 } 50% { opacity:.35 } }` for processing badge dot
+  - [ ] Google Fonts `<link>` tags for Geist (400/500/600/700), Geist Mono (400/500/600), Instrument Serif italic — added to `base.html` `<head>`, not the CSS file
+- [ ] Create `static/css/badges.css`
+  - [ ] `.badge` base: `inline-flex`, `border-radius: 999px`, Geist Mono 11.5px (0.719rem), `letter-spacing: 0.04em`
+  - [ ] `.badge::before` dot: 7×7 px circle, `background: currentColor`
+  - [ ] `.badge--pending`: bg `var(--bg-2)`, border `var(--rule-2)`, color `var(--muted)`
+  - [ ] `.badge--done`: bg `rgba(61,122,74,.10)`, border `rgba(61,122,74,.28)`, color `var(--green)`
+  - [ ] `.badge--overdue`: bg `rgba(177,75,60,.09)`, border `rgba(177,75,60,.28)`, color `var(--red)`
+  - [ ] `.badge--queued`: same visual as `--pending`
+  - [ ] `.badge--processing`: bg `rgba(185,125,42,.10)`, border `rgba(185,125,42,.30)`, color `var(--amber)`; `::before` uses `pulse-dot` animation
+  - [ ] `.badge--failed`: same visual as `--overdue`
+- [ ] Create `static/css/forms.css`
+  - [ ] `.field` wrapper, `.field__label` (Geist Mono, 11px, uppercase, 0.10em letter-spacing, `var(--muted)`)
+  - [ ] Input base: height 42px, padding `0 12px`, border `1px solid var(--rule-2)`, radius `var(--radius-md)`, bg `#fff`
+  - [ ] `:focus` state: border `var(--pg)`, `box-shadow: var(--focus-ring)`
+  - [ ] `.field--error` input: border `var(--red)`, `box-shadow: 0 0 0 3px rgba(177,75,60,.12)`
+  - [ ] `.field__error` message: Geist Mono 11.5px, `var(--red)`, leading `⚠` symbol
+  - [ ] `.msg-banner` base + modifiers `--success`, `--info`, `--warning`, `--error` with left-border accent, icon background (per `design/Implementation Handoff.html` §07)
+  - [ ] `.search-result__snippet b` highlight: bg `#fef3c7`, color `#7c4500`, padding `0 2px`, radius 3px
+- [ ] Configure Django static files
+  - [ ] Add `django.contrib.staticfiles` to `INSTALLED_APPS` (verify it's present)
+  - [ ] Set `STATICFILES_DIRS = [BASE_DIR / "static"]` in `pgstack/settings/base.py`
+  - [ ] Add `{% load static %}` and `{% static 'css/base.css' %}` link to `base.html`
+  - [ ] Verify: `docker compose run web python manage.py collectstatic --noinput` succeeds
+- [ ] Add `app_name` to every `urls.py` that needs active-nav detection
+  - [ ] `todos/urls.py` → `app_name = 'todos'`
+  - [ ] `accounts/urls.py` → `app_name = 'accounts'`
+  - [ ] Update `pgstack/urls.py` `include()` calls to use namespaced includes (`namespace='todos'`, `namespace='accounts'`) where needed
+
+---
+
+### PR 19 — Design: base.html redesign + template partials
+
+> Every template extends this shell. Get it right before touching individual pages.
+
+- [ ] Rewrite `todos/templates/todos/base.html` to match `design/Implementation Handoff.html` §04 nav HTML spec
+  - [ ] `<html lang="en">` with `{% load static %}` at top
+  - [ ] `<head>`: charset, viewport, `{% block title %}pgstack{% endblock %}`, Google Fonts `<link>` preconnect + font stylesheet, `<link rel="stylesheet" href="{% static 'css/base.css' %}">`, badge + form CSS links, `{% block extra_head %}{% endblock %}`
+  - [ ] `<nav class="site-nav" aria-label="Main navigation">` with inner `site-nav__inner` div
+  - [ ] Wordmark: `.site-nav__brand` → `.brand-mark` (28×28 px ink square, "pg") + `.brand-name` ("pgstack") + `.brand-version` ("v0.1" pill)
+  - [ ] Nav links: `<ul class="site-nav__links" role="list">` — Todos, Search, Users, Dashboard, Queue, Settings
+    - [ ] Active detection via `{% with app=request.resolver_match.app_name %}` — add `is-active` class when app matches (Todos→`todos`, Search→`todos` search view namespace, Users→`accounts`, Dashboard→`todos`, Queue→`todos`, Settings→`accounts`)
+    - [ ] Active link indicator: 2px blue underbar (`var(--pg)`) via `::after` pseudo-element, positioned at `bottom: -1px`
+  - [ ] Auth area: `{% if user.is_authenticated %}` → avatar initials (`.site-nav__avatar` using `{{ user.username|slice:":2"|upper }}`), username, divider, logout POST form with CSRF; else → "Log in" ghost link + "Register" primary btn
+  - [ ] Django messages block: `{% if messages %}` → `<div class="messages-container" role="status" aria-live="polite">` with `{% for message in messages %}` → `<div class="msg-banner msg-banner--{{ message.tags }}">` pattern
+  - [ ] `<main class="page-content">{% block content %}{% endblock %}</main>`
+  - [ ] `{% block extra_js %}{% endblock %}` before `</body>`
+  - [ ] Add `site-nav` CSS to `base.css`: nav height 56px, `var(--paper)` bg, `box-shadow: 0 1px 0 rgba(20,24,29,.02), 0 2px 8px rgba(20,24,29,.05)`, inner `max-width: 1280px`, `padding: 0 28px`
+  - [ ] Add `site-nav__link` and `is-active` styles (Geist Mono 12.5px, height 36px, padding `0 12px`, radius 8px; active: bg `var(--bg-2)`, border `var(--rule)`, font-weight 500)
+  - [ ] Add `.page-content` max-width 1280px, `margin: 0 auto`, `padding: 32px 28px`
+- [ ] Create `todos/templates/todos/partials/badge.html`
+  - [ ] `<span class="badge badge--{{ status|lower }}">{{ status }}</span>`
+  - [ ] Document include usage: `{% include 'todos/partials/badge.html' with status=todo.status %}`
+- [ ] Create `todos/templates/todos/partials/form_field.html`
+  - [ ] Renders `.field`, `.field__label`, `{{ field }}`, `{% for error in field.errors %}` → `.field__error` with `⚠` prefix
+  - [ ] Applies `field--error` class to wrapper when `field.errors` is non-empty
+- [ ] Create `todos/templates/todos/partials/non_field_errors.html`
+  - [ ] `{% if form.non_field_errors %}` → `.msg-banner.msg-banner--error` banner with `<ul>` list of errors
+- [ ] Verify: every existing template still renders (`docker compose up`, visit all routes, no 500s)
+
+---
+
+### PR 20 — Design: Landing + Index page
+
+> Two views of the home route: logged-out landing gate and the authenticated todo list.
+
+- [ ] **Logged-out landing gate** (`todos/templates/todos/index.html` or a dedicated `landing.html`)
+  - [ ] Centered layout: `pg` logo mark (52×52 px), kicker label "pgstack · demo app", `h2` "Sign in to continue"
+  - [ ] Subtext paragraph explaining the four Postgres features (max-width ~340px, `var(--muted)`)
+  - [ ] CTA buttons: "Log in" (secondary border style) + "Register" (primary `var(--ink)` bg)
+  - [ ] Auth note info callout: left `var(--pg)` border, blue soft bg, Geist Mono 12px — "Login and registration are handled by `django.contrib.auth`. Sessions stored in Postgres."
+  - [ ] This is purely server-rendered; no JS
+- [ ] **Authenticated todo list** (`todos/templates/todos/index.html`)
+  - [ ] Page header row: left side has kicker label ("Phase 1 · django.contrib.auth") + `<h1>Todos</h1>` (34px, weight 600, letter-spacing −0.025em); right side has filter input field (42px height, search icon SVG) + "+ New todo" primary button
+  - [ ] Header separated from content with `border-bottom: 1px solid var(--rule)`, `padding-bottom: 20px`, `margin-bottom: 28px`
+  - [ ] **Status filter tab row**: All | Pending | Done | Overdue — pill-style tabs (height 32px, Geist Mono 12px), active tab has bg `var(--paper)`, border `var(--rule)`, shadow-sm; inactive is transparent with `var(--muted)` text; colored dots for Pending/Done/Overdue tabs
+  - [ ] **Todo rows**: `<ul id="todo-list">` with list items — each row is `<li class="todo-row">` with: checkbox (18×18 px, radius 5px, ink-filled when done), title text (14.5px sans), due-date label (Geist Mono 11px `var(--muted)`), status badge via partial include
+  - [ ] Done todos: title `line-through`, `textDecorationColor: var(--rule-2)`, color `var(--muted)`
+  - [ ] Row styles: bg `var(--paper)`, border `var(--rule)`, radius 10px, `shadow-sm`, `padding: 13px 16px`, `display: flex`, `align-items: center`, `gap: 14px`
+  - [ ] **Empty state** (no todos): dashed border container (radius 14px, bg `var(--bg)`), circle icon `○`, heading "No todos yet", subtext about LISTEN trigger, "+ New todo" button
+  - [ ] **Inline create form**: `<form method="post">` at top of content area — title input + optional notes textarea + "Save todo" primary button; only shown to `{% if user.is_authenticated %}`
+  - [ ] **WebSocket script** in `{% block extra_js %}`: vanilla JS, ~20 lines, opens `wss?://host/ws/todos/`, on message builds `<li class="todo-row todo-row--new">` and calls `list.insertAdjacentHTML('afterbegin', html)` (per `design/Implementation Handoff.html` §08 WebSocket snippet)
+  - [ ] Add `.todo-row`, `.todo-row--new` (brief highlight animation or ring), `.todo-row__title` CSS to `base.css`
+
+---
+
+### PR 21 — Design: Auth pages (login + signup)
+
+> Centered card layout, Geist Mono labels, design system form inputs.
+
+- [ ] **Login page** (`accounts/templates/registration/login.html`)
+  - [ ] Full-page centered layout: `display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 56px)` (accounts for nav height)
+  - [ ] Auth card: bg `var(--paper)`, border `var(--rule-2)`, radius `var(--radius-2xl)` (16px), padding 32px, max-width 400px, shadow-card
+  - [ ] Card header: `pg` logo mark (40×40 px), kicker "pgstack · login", `<h2>` "Welcome back" (24px, weight 600)
+  - [ ] Form fields using `.field` / `.field__label` / `.field__error` pattern from `partials/form_field.html`
+  - [ ] "Log in" primary button (full width, height 44px)
+  - [ ] Link to signup: "No account? Register →" (Geist Mono 12.5px, `var(--muted)`, centered below button)
+  - [ ] Non-field errors via `partials/non_field_errors.html`
+- [ ] **Signup page** (`accounts/templates/accounts/signup.html`)
+  - [ ] Same centered card layout as login
+  - [ ] Card header: kicker "pgstack · register", `<h2>` "Create an account"
+  - [ ] Fields: Name (maps to `first_name`), Email, Password, Password confirmation — rendered via `partials/form_field.html`
+  - [ ] "Create account" primary button (full width, height 44px)
+  - [ ] Link to login: "Already have an account? Log in →"
+  - [ ] Auth note info callout at bottom of card: `django.contrib.auth` + `UserSettings` created on register (matches `design/Auth Pages.html` detail)
+  - [ ] Non-field errors via `partials/non_field_errors.html`
+- [ ] Verify field widget attrs are set in `accounts/forms.py`
+  - [ ] Each field's widget has `class="field__input"` (or equivalent) + appropriate `placeholder` attr
+  - [ ] Password fields use `PasswordInput` widget
+
+---
+
+### PR 22 — Design: Dashboard + Queue monitor
+
+> Stats from the materialized view and job table presented with the full design system.
+
+- [ ] **Dashboard page** (`todos/templates/todos/dashboard.html`)
+  - [ ] Page header: kicker "Phase 6 · Materialized view + REFRESH CONCURRENTLY", `<h1>Dashboard</h1>`
+  - [ ] **Stat cards row** (3 cards, equal width, `display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px`):
+    - [ ] Each card: bg `var(--paper)`, border `var(--rule-2)`, radius `var(--radius-xl)` (14px), padding 24px, shadow-card
+    - [ ] "Total todos" card: large count number (48px weight 600), label Geist Mono 11px uppercase `var(--muted)`, Postgres-blue accent indicator
+    - [ ] "Done" card: count in `var(--green)`, colored dot/icon
+    - [ ] "Overdue" card: count in `var(--red)`, colored dot/icon
+  - [ ] **Distribution bar**: horizontal pill bar showing proportions of pending/done/overdue using `var(--bg-2)` / `var(--green)` / `var(--red)` segments, `border-radius: var(--radius-pill)`, height 8px
+  - [ ] **Feature callout** info banner: left `var(--pg)` border, "MATERIALIZED VIEW is refreshed automatically after every INSERT, UPDATE, or DELETE on `todos_todo` via a Postgres trigger."
+  - [ ] Scoping label when viewing own dashboard vs. another user's public list
+- [ ] **Queue monitor page** (`todos/templates/todos/queue_monitor.html`)
+  - [ ] Page header: kicker "Phase 7 · SELECT FOR UPDATE SKIP LOCKED", `<h1>Job Queue</h1>`
+  - [ ] **Worker status bar**: pill strip showing worker count (e.g., "3 workers active"), bg `var(--bg-2)`, border `var(--rule-2)`, Geist Mono 12px — static display, no real-time
+  - [ ] **Jobs table** wrapped in `.tbl-wrap` (border `var(--rule-2)`, radius 12px, `overflow: hidden`)
+    - [ ] `<table>` with `<thead>` bg `var(--bg-2)`, `<th>` Geist Mono 10.5px uppercase `var(--muted)`
+    - [ ] Columns: Job type, Todo title (truncated), Status badge (via `partials/badge.html`), Created at, Processed at
+    - [ ] Hover row: subtle `rgba(20,24,29,.02)` bg
+    - [ ] `select_related('todo')` already in view — ensure title renders via `job.todo.title`
+  - [ ] **Empty queue state**: dashed border container, `⏸` icon, "Queue is empty", subtext "No jobs waiting. New todos enqueue a job via trigger."
+  - [ ] **Feature callout** info banner: "Jobs are claimed with `SELECT … FOR UPDATE SKIP LOCKED` — multiple workers can run concurrently without double-processing."
+
+---
+
+### PR 23 — Design: Search + Users pages
+
+> FTS results with ts_headline highlights and the user-discovery flow.
+
+- [ ] **Search results page** (`todos/templates/todos/search_results.html`)
+  - [ ] Page header: kicker "Phase 2 · tsvector + GIN index + ts_headline", `<h1>Search</h1>`
+  - [ ] **Search bar**: 52px-height input with leading search SVG icon (16×16, stroke `var(--muted)`, 1.8 strokeWidth), bg `#fff`, border `var(--rule-2)`, radius `var(--radius-md)`, `box-shadow: var(--shadow-sm)` on focus; form `method="get"` with `name="q"`
+  - [ ] **Result count meta** (when results present): "N results for 'query'" in Geist Mono 11.5px `var(--muted)`, shown above results list
+  - [ ] **Result items** in `<ul>` — each `<li class="search-result">`:
+    - [ ] Card-style: bg `var(--paper)`, border `var(--rule)`, radius 10px, padding `16px 20px`, shadow-sm, `margin-bottom: 8px`
+    - [ ] Title: 16px, weight 600, `var(--ink)`, links to todo detail (or index with anchor)
+    - [ ] Snippet: `.search-result__snippet` — `{{ todo.headline|safe }}` with CSS `b { background: #fef3c7; color: #7c4500; ... }` (per handoff §06)
+    - [ ] Due date + status badge in a row at bottom of card
+    - [ ] Rank annotation label (Geist Mono 10.5px `var(--muted)`): "rank 0.42" or equivalent
+  - [ ] **Empty search state**: "tsvector" mono watermark, "No results for 'query'", "Try different keywords. Full-text search uses English stemming."
+  - [ ] **No query state**: large search bar centered with "Search your todos" heading
+- [ ] **User search page** (`accounts/templates/accounts/user_search.html`)
+  - [ ] Page header: kicker "Accounts · username search", `<h1>Find users</h1>`
+  - [ ] Same search bar pattern as search results (form `method="get"`, `name="q"`)
+  - [ ] **User result cards** (when results): each card shows avatar initials circle (32px, bg `var(--bg-2)`, Geist Mono), username (weight 500), "View todos →" link button (secondary border style, links to `{% url 'accounts:user_todos' username=user.username %}`)
+  - [ ] **Empty state**: "No users match 'query'" with subtext "Try a different username."
+  - [ ] **No query state**: invitation text "Search for a user by username to view their public todo list."
+- [ ] **Public user todo list** (`accounts/templates/accounts/user_todo_list.html`)
+  - [ ] Page header: avatar initials + username + privacy badge ("Public" or "Private" pill)
+  - [ ] If viewing own list: note "This is how others see your list" (info callout)
+  - [ ] Todo rows: same `.todo-row` pattern as index, but without create form and without WebSocket script
+  - [ ] **Inline FTS search**: `<form method="get">` search bar at top for filtering this user's visible todos (calls `?q=<term>`)
+  - [ ] 403 page (if private list accessed by non-owner): centered error state with red banner and "Back to user search" link
+
+---
+
+### PR 24 — Design: Settings + system states + dark mode
+
+> Privacy toggle, global error pages, and the optional dark mode mechanism.
+
+- [ ] **Settings page** (`accounts/templates/accounts/user_settings.html`)
+  - [ ] Page header: kicker "Accounts · privacy", `<h1>Settings</h1>`
+  - [ ] **Privacy settings card**: bg `var(--paper)`, border `var(--rule-2)`, radius `var(--radius-xl)` (14px), padding 24px, shadow-card
+    - [ ] Card title: "Todo list visibility" (weight 600, 16px)
+    - [ ] Toggle row: label "Make my todo list public" with subtext "Anyone with the link can see your todos", and a `<form method="post">` checkbox toggle + "Save" button
+    - [ ] Current status pill: "Private" (gray) or "Public" (green) badge using `.badge` component
+    - [ ] Danger zone section below: description of what changing visibility means
+  - [ ] **Success flash banner** on save: `messages.SUCCESS` → green `msg-banner--success` with "Settings saved" (rendered by `base.html` message block)
+  - [ ] **Account info card**: read-only display of username, email, joined date — bg `var(--bg-2)`, radius `var(--radius-md)`, padding 16px, Geist Mono labels
+- [ ] **System / empty states** (already covered in CSS, but verify in templates)
+  - [ ] Confirm `.msg-banner--success/info/warning/error` renders correctly via the `base.html` messages block on all pages that use `messages.add_message`
+  - [ ] 403 template: same nav shell, centered red `msg-banner--error` box, "Back" link
+  - [ ] 404 template: same nav shell, "○" empty state icon, "Page not found", link to index
+  - [ ] 500 template: same nav shell, red error state
+- [ ] **Dark mode (optional — v0.2 target)**
+  - [ ] Add `[data-theme="dark"]` token overrides to `base.css` (already specified in tokens task)
+  - [ ] Add a theme-toggle button in the nav (small icon button, right of auth area) that sets/reads a `theme` cookie
+  - [ ] Inline `<script>` in `base.html` `<head>` that reads the cookie and sets `document.documentElement.dataset.theme` before first paint (prevents flash)
+  - [ ] Note: defer dark mode to post-MVP if it blocks other work
 
 ---
 

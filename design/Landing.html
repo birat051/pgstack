@@ -1,0 +1,1759 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>pgstack — one database, zero dependencies</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:        #f3efe6;
+    --bg-2:      #ebe6da;
+    --paper:     #faf7f0;
+    --ink:       #14181d;
+    --ink-2:     #2a2f37;
+    --muted:     #6b6f78;
+    --rule:      #d9d3c4;
+    --rule-2:    #c8c1ae;
+    --pg:        #2f6fb5;          /* Postgres-ish blue */
+    --pg-deep:   #1f4d80;
+    --pg-soft:   #e6eef8;
+    --amber:     #b97d2a;
+    --green:     #3d7a4a;
+    --red:       #b14b3c;
+    --sans:      "Geist", ui-sans-serif, system-ui, sans-serif;
+    --mono:      "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --serif:     "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--sans);
+    color: var(--ink);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "ss01", "ss02", "cv11";
+    min-height: 100vh;
+  }
+
+  /* subtle paper grain on the whole page */
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(1200px 600px at 18% -10%, rgba(47,111,181,0.06), transparent 60%),
+      radial-gradient(900px 500px at 100% 100%, rgba(185,125,42,0.05), transparent 55%);
+    z-index: 0;
+  }
+
+  .shell {
+    position: relative;
+    z-index: 1;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 28px 40px 40px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 28px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+  }
+  .brand-mark {
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    background: var(--ink);
+    color: var(--paper);
+    display: grid; place-items: center;
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 13px;
+    position: relative;
+  }
+  .brand-mark::after {
+    content: "";
+    position: absolute;
+    inset: 3px;
+    border-radius: 4px;
+    border: 1px solid rgba(250,247,240,0.18);
+  }
+  .brand-name { color: var(--ink); }
+  .brand-name b { font-weight: 600; }
+  .brand-version {
+    color: var(--muted);
+    font-weight: 400;
+    margin-left: 2px;
+  }
+
+  .topnav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .topnav a {
+    color: var(--ink-2);
+    text-decoration: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+  }
+  .topnav a:hover { background: rgba(20,24,29,0.06); }
+  .topnav .sep {
+    width: 1px; height: 14px;
+    background: var(--rule-2);
+    margin: 0 6px;
+  }
+  .topnav .ghbtn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 7px 11px;
+    border: 1px solid var(--rule-2);
+    border-radius: 8px;
+    background: var(--paper);
+  }
+  .topnav .ghbtn svg { width: 13px; height: 13px; }
+  .topnav .ghbtn .stars { color: var(--muted); }
+
+  /* ---------- main split ---------- */
+  .split {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(420px, 0.95fr);
+    gap: 56px;
+    flex: 1;
+    align-items: stretch;
+  }
+
+  /* ---------- LEFT: pitch ---------- */
+  .pitch { padding-top: 18px; }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--ink-2);
+    padding: 6px 12px 6px 8px;
+    border: 1px solid var(--rule-2);
+    border-radius: 999px;
+    background: var(--paper);
+  }
+  .eyebrow .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 3px rgba(61,122,74,0.18);
+  }
+
+  h1.headline {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: clamp(44px, 5.4vw, 76px);
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+    margin: 22px 0 0;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  h1.headline em {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--pg-deep);
+  }
+  h1.headline .slash {
+    color: var(--rule-2);
+    font-weight: 400;
+    margin: 0 2px;
+  }
+
+  .lede {
+    margin-top: 22px;
+    max-width: 560px;
+    font-size: 16.5px;
+    line-height: 1.55;
+    color: var(--ink-2);
+  }
+  .lede code {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    padding: 1px 6px;
+    border-radius: 5px;
+    background: rgba(20,24,29,0.05);
+    color: var(--ink);
+  }
+
+  /* replaces table */
+  .replaces {
+    margin-top: 36px;
+    border: 1px solid var(--rule-2);
+    border-radius: 14px;
+    background: var(--paper);
+    overflow: hidden;
+    box-shadow: 0 1px 0 rgba(20,24,29,0.02), 0 24px 60px -40px rgba(20,24,29,0.18);
+  }
+  .replaces-head {
+    display: grid;
+    grid-template-columns: 38px 1.1fr 1fr 56px 70px;
+    align-items: center;
+    padding: 11px 18px;
+    background: var(--bg-2);
+    border-bottom: 1px solid var(--rule-2);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .replaces-row {
+    display: grid;
+    grid-template-columns: 38px 1.1fr 1fr 56px 70px;
+    align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--rule);
+    font-size: 14px;
+  }
+  .replaces-row:last-child { border-bottom: 0; }
+  .replaces-row .idx {
+    font-family: var(--mono);
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .replaces-row .out {
+    display: inline-flex; align-items: center; gap: 10px;
+    color: var(--ink-2);
+  }
+  .replaces-row .strike {
+    text-decoration: line-through;
+    text-decoration-color: var(--red);
+    text-decoration-thickness: 1.5px;
+    color: var(--ink-2);
+  }
+  .arrow {
+    color: var(--rule-2);
+    font-family: var(--mono);
+  }
+  .replaces-row .in {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .replaces-row .in span {
+    color: var(--pg);
+  }
+  .phase {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    text-align: right;
+  }
+  .badge-saved {
+    justify-self: end;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--green);
+    background: rgba(61,122,74,0.10);
+    padding: 3px 8px;
+    border-radius: 999px;
+    letter-spacing: 0.04em;
+  }
+
+  .deps {
+    margin-top: 22px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .dep-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 10px 5px 8px;
+    border: 1px solid var(--rule-2);
+    border-radius: 999px;
+    background: var(--paper);
+    color: var(--ink-2);
+  }
+  .dep-pill .x {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: rgba(177,75,60,0.12);
+    color: var(--red);
+    display: grid; place-items: center;
+    font-size: 10px;
+    line-height: 1;
+  }
+  .dep-pill .check {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: rgba(47,111,181,0.14);
+    color: var(--pg);
+    display: grid; place-items: center;
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  /* ---------- RIGHT: auth panel ---------- */
+  .panel {
+    position: relative;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .auth {
+    background: var(--paper);
+    border: 1px solid var(--rule-2);
+    border-radius: 16px;
+    padding: 0;
+    box-shadow:
+      0 1px 0 rgba(20,24,29,0.02),
+      0 30px 70px -50px rgba(20,24,29,0.45);
+    overflow: hidden;
+  }
+
+  /* psql-style header bar */
+  .auth-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--rule);
+    background: linear-gradient(180deg, #ffffff 0%, #f6f1e3 100%);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .dots { display: flex; gap: 6px; }
+  .dots i {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--rule-2);
+    display: inline-block;
+  }
+  .dots i:nth-child(1) { background: #d9534f; opacity: 0.55; }
+  .dots i:nth-child(2) { background: #d9a73a; opacity: 0.55; }
+  .dots i:nth-child(3) { background: #5cb85c; opacity: 0.55; }
+  .auth-head .title { letter-spacing: 0.04em; }
+  .auth-head .right {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--muted);
+  }
+  .auth-head .right .live {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 3px rgba(61,122,74,0.16);
+  }
+
+  .auth-body {
+    padding: 26px 28px 24px;
+  }
+
+  .auth-title {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 24px;
+    letter-spacing: -0.02em;
+    margin: 0 0 4px;
+  }
+  .auth-sub {
+    color: var(--muted);
+    font-size: 13.5px;
+    margin: 0 0 22px;
+  }
+  .auth-sub code {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    color: var(--ink-2);
+  }
+
+  /* tabs (sign in / sign up) */
+  .tabs {
+    display: inline-flex;
+    padding: 3px;
+    background: var(--bg-2);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    margin-bottom: 20px;
+  }
+  .tabs button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--ink-2);
+    padding: 7px 14px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+  }
+  .tabs button.active {
+    background: var(--paper);
+    color: var(--ink);
+    box-shadow: 0 1px 0 rgba(20,24,29,0.05), 0 1px 2px rgba(20,24,29,0.08);
+  }
+
+  /* form */
+  form { display: flex; flex-direction: column; gap: 14px; }
+
+  label.field {
+    display: flex; flex-direction: column; gap: 7px;
+  }
+  label .row {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  label .lbl {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  label .hint {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--pg);
+    text-decoration: none;
+  }
+  .input {
+    display: flex; align-items: center;
+    padding: 0 12px;
+    height: 42px;
+    background: #ffffff;
+    border: 1px solid var(--rule-2);
+    border-radius: 9px;
+    transition: border-color .12s, box-shadow .12s, background .12s;
+  }
+  .input:focus-within {
+    border-color: var(--pg);
+    box-shadow: 0 0 0 3px rgba(47,111,181,0.16);
+  }
+  .input .prefix {
+    font-family: var(--mono);
+    color: var(--muted);
+    font-size: 13px;
+    padding-right: 8px;
+    margin-right: 8px;
+    border-right: 1px solid var(--rule);
+  }
+  .input input {
+    flex: 1;
+    border: 0; outline: 0;
+    background: transparent;
+    font-family: var(--sans);
+    font-size: 14.5px;
+    color: var(--ink);
+    height: 100%;
+  }
+  .input input::placeholder { color: var(--muted); }
+  .input .eye {
+    cursor: pointer;
+    color: var(--muted);
+    padding-left: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    user-select: none;
+  }
+  .input .eye:hover { color: var(--ink); }
+
+  .check-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 2px;
+    font-size: 13px;
+  }
+  .check {
+    display: inline-flex; align-items: center; gap: 9px;
+    color: var(--ink-2);
+    cursor: pointer;
+    user-select: none;
+  }
+  .check input { display: none; }
+  .check .box {
+    width: 16px; height: 16px;
+    border-radius: 5px;
+    border: 1px solid var(--rule-2);
+    background: #fff;
+    display: grid; place-items: center;
+    color: transparent;
+    font-size: 11px;
+    line-height: 1;
+  }
+  .check input:checked + .box {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: #fff;
+  }
+
+  .submit {
+    appearance: none;
+    border: 0;
+    margin-top: 6px;
+    height: 46px;
+    border-radius: 10px;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 13.5px;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 10px;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 8px 24px -12px rgba(20,24,29,0.6);
+    transition: transform .06s ease, background .12s;
+  }
+  .submit:hover { background: #0c1014; }
+  .submit:active { transform: translateY(1px); }
+  .submit .kbd {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 5px;
+    border: 1px solid rgba(255,255,255,0.18);
+    color: rgba(250,247,240,0.7);
+  }
+
+  /* django auth note */
+  .auth-note {
+    margin-top: 18px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 11px 13px;
+    background: var(--bg-2);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--ink-2);
+  }
+  .auth-note code {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    color: var(--ink);
+  }
+  .auth-note-tag {
+    flex: none;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--pg);
+    background: var(--pg-soft);
+    border: 1px solid rgba(47,111,181,0.25);
+    padding: 2px 7px;
+    border-radius: 5px;
+    margin-top: 1px;
+  }
+
+  /* divider */
+  .or {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 10px;
+    margin: 18px 0 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+  .or::before, .or::after {
+    content: ""; height: 1px; background: var(--rule);
+  }
+
+  .oauth {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .oauth button {
+    appearance: none;
+    height: 40px;
+    border: 1px solid var(--rule-2);
+    border-radius: 9px;
+    background: #ffffff;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 13.5px;
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: background .12s, border-color .12s;
+  }
+  .oauth button:hover { background: var(--bg-2); border-color: var(--ink-2); }
+  .oauth svg { width: 15px; height: 15px; }
+
+  .footnote {
+    margin-top: 18px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 12.5px;
+  }
+  .footnote a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--rule-2); }
+
+  /* connection string preview */
+  .conn {
+    margin-top: 18px;
+    padding: 12px 14px;
+    background: #0f1216;
+    color: #cfd3dc;
+    border-radius: 12px;
+    font-family: var(--mono);
+    font-size: 12.2px;
+    line-height: 1.55;
+    border: 1px solid #1c2128;
+    box-shadow: 0 18px 40px -30px rgba(0,0,0,0.6);
+    position: relative;
+  }
+  .conn .prompt { color: #6b7280; }
+  .conn .cmd    { color: #e7e3d7; }
+  .conn .key    { color: #9ec1ed; }
+  .conn .str    { color: #c7a96b; }
+  .conn .ok     { color: #7cc28a; }
+  .conn .muted2 { color: #6b7280; }
+  .conn .cursor {
+    display: inline-block;
+    width: 7px; height: 13px;
+    background: #cfd3dc;
+    vertical-align: -2px;
+    margin-left: 3px;
+    animation: blink 1.05s steps(2, start) infinite;
+  }
+  @keyframes blink { to { visibility: hidden; } }
+
+  /* ---------- footer ---------- */
+  .footer {
+    margin-top: 36px;
+    padding-top: 22px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  .footer .left { display: flex; align-items: center; gap: 16px; }
+  .footer .pg {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: var(--ink-2);
+  }
+  .footer .pg .pgdot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--pg);
+    box-shadow: 0 0 0 3px rgba(47,111,181,0.18);
+  }
+  .footer .right { display: flex; align-items: center; gap: 18px; }
+  .footer a { color: var(--muted); text-decoration: none; }
+  .footer a:hover { color: var(--ink); }
+
+  /* ---------- side margin labels ---------- */
+  .gutter {
+    position: absolute;
+    left: -22px; top: 0;
+    bottom: 0;
+    width: 18px;
+    border-left: 1px dashed var(--rule-2);
+  }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 1080px) {
+    .split { grid-template-columns: 1fr; gap: 40px; }
+    .panel { max-width: 520px; }
+  }
+  @media (max-width: 640px) {
+    .shell { padding: 18px 18px 28px; }
+    .topbar { flex-wrap: wrap; gap: 12px; }
+    .topnav .desktop-only { display: none; }
+    .replaces-head, .replaces-row {
+      grid-template-columns: 28px 1fr 1fr 60px;
+    }
+    .replaces-head .col-saved, .replaces-row .badge-saved { display: none; }
+  }
+
+  /* ====================================================================
+     FEATURES / DEMO / LIMITS sections
+     ==================================================================== */
+
+  .section {
+    margin-top: 96px;
+    position: relative;
+  }
+  .section + .section { margin-top: 88px; }
+
+  .section-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 32px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 32px;
+  }
+  .section-head .left {
+    max-width: 720px;
+  }
+  .section-kicker {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-kicker .num {
+    color: var(--pg);
+    font-weight: 500;
+  }
+  .section-title {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: clamp(28px, 3vw, 40px);
+    letter-spacing: -0.025em;
+    line-height: 1.05;
+    margin: 12px 0 0;
+    text-wrap: balance;
+  }
+  .section-title em {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 400;
+    color: var(--pg-deep);
+    letter-spacing: -0.015em;
+  }
+  .section-sub {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    flex: none;
+    padding-bottom: 6px;
+  }
+
+  /* ---------- Feature blocks ---------- */
+  .feature {
+    display: grid;
+    grid-template-columns: 1fr 1.05fr;
+    gap: 40px;
+    align-items: stretch;
+    padding: 36px 0;
+    border-bottom: 1px dashed var(--rule);
+  }
+  .feature:last-child { border-bottom: 0; }
+  .feature.reverse > .feature-copy { order: 2; }
+
+  .feature-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .feature-meta {
+    display: flex; align-items: center; gap: 12px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .feature-meta .pg-tag {
+    color: var(--pg);
+    background: var(--pg-soft);
+    border: 1px solid rgba(47,111,181,0.22);
+    padding: 3px 8px;
+    border-radius: 5px;
+    letter-spacing: 0.08em;
+  }
+  .feature-meta .replaces-tag {
+    color: var(--ink-2);
+    border: 1px solid var(--rule-2);
+    background: var(--paper);
+    padding: 3px 8px;
+    border-radius: 5px;
+  }
+  .feature-meta .replaces-tag s {
+    text-decoration-color: var(--red);
+    text-decoration-thickness: 1.5px;
+  }
+  .feature h3 {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 26px;
+    letter-spacing: -0.02em;
+    line-height: 1.12;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .feature p {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+  .feature p code, .feature li code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    background: rgba(20,24,29,0.05);
+    padding: 1px 6px;
+    border-radius: 5px;
+    color: var(--ink);
+  }
+  .feature ul {
+    margin: 4px 0 0;
+    padding: 0;
+    list-style: none;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .feature ul li {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 14px;
+    color: var(--ink-2);
+    line-height: 1.5;
+  }
+  .feature ul li::before {
+    content: "→";
+    color: var(--pg);
+    font-family: var(--mono);
+    margin-top: 1px;
+    flex: none;
+  }
+
+  /* code card */
+  .code {
+    background: #0f1216;
+    border: 1px solid #1c2128;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 1px 0 rgba(20,24,29,0.04), 0 30px 60px -40px rgba(20,24,29,0.4);
+    display: flex; flex-direction: column;
+    min-height: 240px;
+  }
+  .code-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 14px;
+    background: #14181d;
+    border-bottom: 1px solid #1c2128;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: #8a8f99;
+    letter-spacing: 0.04em;
+  }
+  .code-head .lang {
+    color: var(--pg);
+    background: rgba(47,111,181,0.14);
+    border: 1px solid rgba(47,111,181,0.35);
+    padding: 1px 7px;
+    border-radius: 4px;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+  }
+  .code pre {
+    margin: 0;
+    padding: 16px 18px;
+    font-family: var(--mono);
+    font-size: 12.6px;
+    line-height: 1.6;
+    color: #d6d3c8;
+    overflow-x: auto;
+    flex: 1;
+  }
+  .code .k  { color: #c490d8; }   /* keyword */
+  .code .fn { color: #9ec1ed; }   /* function / column */
+  .code .s  { color: #c7a96b; }   /* string */
+  .code .n  { color: #d6d3c8; }   /* identifier */
+  .code .c  { color: #6b7280; font-style: italic; } /* comment */
+  .code .o  { color: #8a8f99; }   /* operator */
+  .code .pg { color: #7cc28a; }   /* postgres feature highlight */
+
+  /* ---------- Demo strip ---------- */
+  .demo-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  .demo-card {
+    border: 1px solid var(--rule-2);
+    border-radius: 14px;
+    background: var(--paper);
+    padding: 22px 22px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+  }
+  .demo-card .step {
+    position: absolute;
+    top: 18px; right: 20px;
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 38px;
+    color: var(--rule-2);
+    line-height: 1;
+  }
+  .demo-card h4 {
+    margin: 0;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 18px;
+    letter-spacing: -0.015em;
+    max-width: 80%;
+  }
+  .demo-card .route {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--pg);
+    background: var(--pg-soft);
+    border: 1px solid rgba(47,111,181,0.22);
+    padding: 4px 9px;
+    border-radius: 6px;
+    align-self: flex-start;
+  }
+  .demo-card p {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .demo-card p code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    background: rgba(20,24,29,0.05);
+    padding: 1px 6px;
+    border-radius: 5px;
+  }
+  .demo-card .tag {
+    margin-top: auto;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    border-top: 1px dashed var(--rule);
+    padding-top: 10px;
+  }
+  .demo-card .tag b { color: var(--ink); font-weight: 500; }
+
+  /* ---------- Quickstart ---------- */
+  .quickstart {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    align-items: stretch;
+  }
+  .quickstart .copy {
+    display: flex; flex-direction: column;
+    gap: 14px;
+  }
+  .quickstart .copy h3 {
+    margin: 0;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+  }
+  .quickstart .copy p {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .quickstart .copy code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    background: rgba(20,24,29,0.05);
+    padding: 1px 6px;
+    border-radius: 5px;
+  }
+  .req-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .req-list li {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--ink-2);
+  }
+  .req-list li .ok {
+    width: 18px; height: 18px;
+    border-radius: 5px;
+    background: rgba(61,122,74,0.14);
+    color: var(--green);
+    display: grid; place-items: center;
+    font-size: 11px;
+    font-family: var(--mono);
+  }
+
+  /* ---------- Limits / caveats ---------- */
+  .limits-banner {
+    margin-bottom: 24px;
+    padding: 16px 20px;
+    border: 1px solid var(--rule-2);
+    border-left: 3px solid var(--amber);
+    background: var(--paper);
+    border-radius: 10px;
+    display: flex; gap: 16px; align-items: flex-start;
+  }
+  .limits-banner .tag {
+    flex: none;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--amber);
+    padding: 4px 8px;
+    background: rgba(185,125,42,0.10);
+    border: 1px solid rgba(185,125,42,0.3);
+    border-radius: 5px;
+    margin-top: 1px;
+  }
+  .limits-banner p {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 14.5px;
+    line-height: 1.55;
+  }
+  .limits-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+  .limit {
+    border: 1px solid var(--rule-2);
+    border-radius: 12px;
+    background: var(--paper);
+    padding: 18px 20px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .limit .top {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px;
+  }
+  .limit h5 {
+    margin: 0;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+  }
+  .limit .verdict {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 5px;
+    flex: none;
+  }
+  .limit .verdict.good {
+    color: var(--green);
+    background: rgba(61,122,74,0.10);
+    border: 1px solid rgba(61,122,74,0.28);
+  }
+  .limit .verdict.warn {
+    color: var(--amber);
+    background: rgba(185,125,42,0.10);
+    border: 1px solid rgba(185,125,42,0.3);
+  }
+  .limit p {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 13.5px;
+    line-height: 1.55;
+  }
+  .limit p code {
+    font-family: var(--mono);
+    font-size: 0.9em;
+    background: rgba(20,24,29,0.05);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  /* ---------- Tech stack strip ---------- */
+  .stack-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+  }
+  .stack-card {
+    border: 1px solid var(--rule-2);
+    border-radius: 12px;
+    background: var(--paper);
+    padding: 18px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .stack-card .name {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 13.5px;
+    color: var(--ink);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .stack-card .name .v {
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .stack-card .role {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
+  }
+  .stack-card.pg {
+    background: linear-gradient(180deg, #ffffff, var(--pg-soft));
+    border-color: rgba(47,111,181,0.3);
+  }
+  .stack-card.pg .name { color: var(--pg-deep); }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 1080px) {
+    .feature { grid-template-columns: 1fr; gap: 24px; }
+    .feature.reverse > .feature-copy { order: 0; }
+    .quickstart { grid-template-columns: 1fr; }
+    .stack-strip { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .section { margin-top: 64px; }
+    .demo-grid, .limits-grid { grid-template-columns: 1fr; }
+    .section-head { flex-direction: column; align-items: flex-start; gap: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ============ TOP BAR ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">pg</div>
+      <div class="brand-name"><b>pgstack</b><span class="brand-version">&nbsp;v0.1</span></div>
+    </div>
+
+    <nav class="topnav">
+      <a href="#phases" class="desktop-only">Phases</a>
+      <a href="#stack" class="desktop-only">Stack</a>
+      <span class="sep desktop-only"></span>
+      <a href="#github" class="ghbtn" title="View on GitHub">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        github.com/pgstack
+        <span class="stars">★ 4.2k</span>
+      </a>
+    </nav>
+  </header>
+
+  <!-- ============ SPLIT ============ -->
+  <main class="split">
+
+    <!-- ============ LEFT: PITCH ============ -->
+    <section class="pitch">
+      <span class="eyebrow">
+        <span class="dot"></span>
+        ONE DATABASE · ZERO DEPENDENCIES
+      </span>
+
+      <h1 class="headline">
+        Push Postgres<br/>
+        until everything else <em>disappears.</em>
+      </h1>
+
+      <p class="lede">
+        pgstack is a reference Django app that replaces Redis, Elasticsearch, SQS and
+        Celery with features already sitting inside your <code>postgres</code> instance —
+        <code>tsvector</code>, <code>LISTEN/NOTIFY</code>, <code>MATERIALIZED VIEW</code>,
+        and <code>SKIP LOCKED</code>. One database. One process tree. No moving parts.
+      </p>
+
+      <!-- replaces table -->
+      <div class="replaces" id="phases">
+        <div class="replaces-head">
+          <div>#</div>
+          <div>Replaces</div>
+          <div>With</div>
+          <div>Phase</div>
+          <div class="col-saved" style="text-align:right;">Saved</div>
+        </div>
+
+        <div class="replaces-row">
+          <div class="idx">01</div>
+          <div class="out"><span class="strike">Elasticsearch</span></div>
+          <div class="in"><span>tsvector</span> + GIN + ts_headline</div>
+          <div class="phase">P2</div>
+          <div class="badge-saved">−1 svc</div>
+        </div>
+
+        <div class="replaces-row">
+          <div class="idx">02</div>
+          <div class="out"><span class="strike">Redis Pub/Sub</span></div>
+          <div class="in"><span>pg_notify</span> + LISTEN</div>
+          <div class="phase">P3</div>
+          <div class="badge-saved">−1 svc</div>
+        </div>
+
+        <div class="replaces-row">
+          <div class="idx">03</div>
+          <div class="out"><span class="strike">Redis cache</span></div>
+          <div class="in"><span>MATERIALIZED VIEW</span></div>
+          <div class="phase">P4</div>
+          <div class="badge-saved">−1 svc</div>
+        </div>
+
+        <div class="replaces-row">
+          <div class="idx">04</div>
+          <div class="out"><span class="strike">SQS&nbsp;/&nbsp;Celery</span></div>
+          <div class="in">SELECT FOR UPDATE <span>SKIP LOCKED</span></div>
+          <div class="phase">P5</div>
+          <div class="badge-saved">−2 svc</div>
+        </div>
+      </div>
+
+      <div class="deps">
+        <span style="margin-right:4px;">stack&nbsp;diff&nbsp;→</span>
+        <span class="dep-pill"><span class="x">−</span>redis</span>
+        <span class="dep-pill"><span class="x">−</span>elasticsearch</span>
+        <span class="dep-pill"><span class="x">−</span>celery</span>
+        <span class="dep-pill"><span class="x">−</span>sqs</span>
+        <span class="dep-pill"><span class="check">+</span>postgres&nbsp;<span style="color:var(--muted);">16</span></span>
+      </div>
+    </section>
+
+    <!-- ============ RIGHT: AUTH ============ -->
+    <aside class="panel">
+      <div class="auth">
+
+        <div class="auth-head">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="dots"><i></i><i></i><i></i></div>
+            <span class="title">~/pgstack — psql</span>
+          </div>
+          <div class="right">
+            <span class="live"></span>
+            <span>postgres&nbsp;16.2 · idle</span>
+          </div>
+        </div>
+
+        <div class="auth-body">
+          <h2 class="auth-title">Connect to pgstack</h2>
+          <p class="auth-sub">Sign in to open the demo at <code>localhost:8000</code> — todos, search, dashboard, queue.</p>
+
+          <div class="tabs" role="tablist" aria-label="Auth mode">
+            <button class="active" type="button" data-tab="signin">Sign in</button>
+            <button type="button" data-tab="signup">Create account</button>
+          </div>
+
+          <form id="authForm" onsubmit="event.preventDefault(); doSubmit();">
+            <label class="field">
+              <div class="row">
+                <span class="lbl">role&nbsp;/&nbsp;email</span>
+              </div>
+              <div class="input">
+                <span class="prefix">user@</span>
+                <input type="email" name="email" placeholder="ada.lovelace" autocomplete="email" required />
+              </div>
+            </label>
+
+            <label class="field">
+              <div class="row">
+                <span class="lbl">password</span>
+                <a href="#reset" class="hint">forgot?</a>
+              </div>
+              <div class="input">
+                <span class="prefix">••</span>
+                <input id="pw" type="password" name="password" placeholder="••••••••••••" autocomplete="current-password" required />
+                <span class="eye" id="eye" onclick="togglePw()">SHOW</span>
+              </div>
+            </label>
+
+            <div class="check-row">
+              <label class="check">
+                <input type="checkbox" checked />
+                <span class="box">✓</span>
+                <span>Persist session (<code style="font-family:var(--mono); font-size:11.5px;">pg_session</code>)</span>
+              </label>
+              <span style="font-family:var(--mono); font-size:11px; color:var(--muted);">SSL · required</span>
+            </div>
+
+            <button class="submit" type="submit">
+              <span>\connect&nbsp;&nbsp;→</span>
+              <span class="kbd">⏎</span>
+            </button>
+          </form>
+
+          <!-- django auth notice -->
+          <div class="auth-note">
+            <span class="auth-note-tag">auth</span>
+            <span>Authenticated by <code>django.contrib.auth</code> — sessions stored in Postgres, no third-party providers.</span>
+          </div>
+
+          <!-- terminal preview -->
+          <div class="conn" aria-hidden="true">
+            <div><span class="prompt">$</span> <span class="cmd">psql postgres://<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="d8b9bcb998a8bfabacb9bbb3f6b4b7bbb9b4">[email&#160;protected]</a>:5432/todos</span></div>
+            <div class="muted2">Server: PostgreSQL 16.2 · SSL on · 1 connection</div>
+            <div><span class="prompt">todos=&gt;</span> <span class="cmd">LISTEN</span> <span class="key">todo_updates</span><span class="muted2">;</span></div>
+            <div><span class="ok">LISTEN</span><span class="cursor"></span></div>
+          </div>
+
+          <p class="footnote">
+            No account? <a href="#signup" onclick="switchTab('signup'); return false;">Create one</a> ·
+            By continuing you accept the <a href="#tos">terms</a>.
+          </p>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ============ FEATURES ============ -->
+  <section class="section" id="features" data-screen-label="Features">
+    <div class="section-head">
+      <div class="left">
+        <div class="section-kicker"><span class="num">02</span> · WHAT POSTGRES IS DOING</div>
+        <h2 class="section-title">Four features your database already <em>knows how to do.</em></h2>
+      </div>
+      <div class="section-sub">↓ scroll &nbsp;·&nbsp; 4 capabilities</div>
+    </div>
+
+    <!-- FEATURE 1: Full-text search -->
+    <div class="feature" id="search">
+      <div class="feature-copy">
+        <div class="feature-meta">
+          <span class="pg-tag">tsvector · GIN · ts_headline</span>
+          <span class="replaces-tag">replaces <s>elasticsearch</s></span>
+        </div>
+        <h3>Full-text search that ranks, highlights, and indexes itself.</h3>
+        <p>
+          Titles and notes are tokenised into a <code>tsvector</code> column by a
+          <code>BEFORE INSERT/UPDATE</code> trigger and indexed with GIN — so every write
+          keeps the index hot without application-layer plumbing. Reads use
+          <code>SearchRank</code> for relevance ordering and <code>SearchHeadline</code>
+          to return the matching span with terms wrapped for the template to highlight.
+        </p>
+        <ul>
+          <li>English stemming and stop-words via the built-in dictionary</li>
+          <li>Ranking via <code>ts_rank</code> — no scoring code in Python</li>
+          <li><code>ts_headline</code> returns the matched snippet, pre-marked</li>
+          <li>One GIN index. No second service to keep in sync.</li>
+        </ul>
+      </div>
+      <div class="code">
+        <div class="code-head">
+          <span>todos/views.py</span>
+          <span class="lang">PY</span>
+        </div>
+<pre><span class="k">from</span> <span class="n">django.contrib.postgres.search</span> <span class="k">import</span> (
+    <span class="fn">SearchQuery</span>, <span class="fn">SearchRank</span>, <span class="fn">SearchHeadline</span>,
+)
+
+<span class="k">def</span> <span class="fn">search_todos</span>(<span class="n">request</span>):
+    <span class="n">q</span> <span class="o">=</span> <span class="n">request</span>.<span class="n">GET</span>.<span class="fn">get</span>(<span class="s">"q"</span>, <span class="s">""</span>)
+    <span class="n">query</span> <span class="o">=</span> <span class="fn">SearchQuery</span>(<span class="n">q</span>)
+
+    <span class="n">todos</span> <span class="o">=</span> (
+        <span class="n">Todo</span>.<span class="n">objects</span>
+            .<span class="fn">annotate</span>(
+                <span class="n">rank</span><span class="o">=</span><span class="fn">SearchRank</span>(<span class="s">"search_vector"</span>, <span class="n">query</span>),
+                <span class="n">headline</span><span class="o">=</span><span class="fn">SearchHeadline</span>(<span class="s">"title"</span>, <span class="n">query</span>),
+            )
+            .<span class="fn">filter</span>(<span class="n">search_vector</span><span class="o">=</span><span class="n">query</span>)   <span class="c"># GIN index lookup</span>
+            .<span class="fn">order_by</span>(<span class="s">"-rank"</span>)
+    )
+    <span class="k">return</span> <span class="fn">render</span>(<span class="n">request</span>, <span class="s">"todos/search_results.html"</span>,
+                  {<span class="s">"todos"</span>: <span class="n">todos</span>, <span class="s">"q"</span>: <span class="n">q</span>})
+</pre>
+      </div>
+    </div>
+
+    <!-- FEATURE 2: LISTEN/NOTIFY live -->
+    <div class="feature reverse" id="live">
+      <div class="feature-copy">
+        <div class="feature-meta">
+          <span class="pg-tag">pg_notify · LISTEN · channels</span>
+          <span class="replaces-tag">replaces <s>redis pub/sub</s></span>
+        </div>
+        <h3>Live cross-tab updates fired straight from a write trigger.</h3>
+        <p>
+          Every insert and update on <code>todos_todo</code> calls <code>pg_notify</code>
+          with the row as JSON. A Django Channels consumer opens a long-lived
+          <code>asyncpg</code> listener on the <code>todo_updates</code> channel and
+          forwards each payload over a WebSocket. No Redis channel layer, no broker — the
+          database is the bus.
+        </p>
+        <ul>
+          <li>Trigger runs <code>AFTER INSERT OR UPDATE</code> — guaranteed write order</li>
+          <li>ASGI worker (Daphne) holds one persistent listener per connection</li>
+          <li>Open two tabs, write in one, see it in the other in &lt;50ms locally</li>
+          <li>Fine for single-node deploys; for fan-out across replicas, use a broker</li>
+        </ul>
+      </div>
+      <div class="code">
+        <div class="code-head">
+          <span>todos/triggers.sql &nbsp;·&nbsp; todos/consumers.py</span>
+          <span class="lang">SQL · PY</span>
+        </div>
+<pre><span class="c">-- on every write, ship the row as JSON to listeners</span>
+<span class="k">CREATE OR REPLACE FUNCTION</span> <span class="fn">notify_todo_change</span>() <span class="k">RETURNS</span> <span class="k">trigger</span> <span class="k">AS</span> $$
+<span class="k">BEGIN</span>
+  <span class="k">PERFORM</span> <span class="pg">pg_notify</span>(<span class="s">'todo_updates'</span>, <span class="fn">row_to_json</span>(<span class="n">NEW</span>)::<span class="k">text</span>);
+  <span class="k">RETURN</span> <span class="n">NEW</span>;
+<span class="k">END</span>; $$ <span class="k">LANGUAGE</span> plpgsql;
+
+<span class="c"># asgi consumer — one async listener per socket</span>
+<span class="k">class</span> <span class="fn">TodoConsumer</span>(<span class="n">AsyncWebsocketConsumer</span>):
+    <span class="k">async def</span> <span class="fn">connect</span>(<span class="n">self</span>):
+        <span class="k">await</span> <span class="n">self</span>.<span class="fn">accept</span>()
+        <span class="n">conn</span> <span class="o">=</span> <span class="k">await</span> <span class="n">asyncpg</span>.<span class="fn">connect</span>(<span class="n">DATABASE_URL</span>)
+        <span class="k">await</span> <span class="n">conn</span>.<span class="fn">add_listener</span>(<span class="s">"todo_updates"</span>, <span class="n">self</span>.<span class="n">on_notify</span>)
+
+    <span class="k">async def</span> <span class="fn">on_notify</span>(<span class="n">self</span>, <span class="n">_c</span>, <span class="n">_pid</span>, <span class="n">_ch</span>, <span class="n">payload</span>):
+        <span class="k">await</span> <span class="n">self</span>.<span class="fn">send</span>(<span class="n">text_data</span><span class="o">=</span><span class="n">payload</span>)
+</pre>
+      </div>
+    </div>
+
+    <!-- FEATURE 3: Materialized view -->
+    <div class="feature" id="dashboard">
+      <div class="feature-copy">
+        <div class="feature-meta">
+          <span class="pg-tag">materialized view · concurrent refresh</span>
+          <span class="replaces-tag">replaces <s>redis cache</s></span>
+        </div>
+        <h3>A self-refreshing dashboard with zero cache code.</h3>
+        <p>
+          Aggregated counts by status live in a <code>MATERIALIZED VIEW</code> with a
+          unique index on <code>status</code>. An <code>AFTER INSERT/UPDATE/DELETE</code>
+          trigger calls <code>REFRESH MATERIALIZED VIEW CONCURRENTLY</code> so readers
+          never block, and the dashboard view is a one-line <code>raw()</code> query.
+          There's no cache layer to invalidate because there isn't a cache layer.
+        </p>
+        <ul>
+          <li>Pre-computed aggregates — reads cost a constant <code>O(rows-in-view)</code></li>
+          <li><code>CONCURRENTLY</code> needs the unique index; trade write cost for read speed</li>
+          <li>Counts with <code>FILTER (WHERE …)</code> instead of N round-trips</li>
+          <li>Best for moderate write volumes — for heavy writes, switch to a debounced refresh</li>
+        </ul>
+      </div>
+      <div class="code">
+        <div class="code-head">
+          <span>migrations/0003_todo_stats.sql</span>
+          <span class="lang">SQL</span>
+        </div>
+<pre><span class="k">CREATE MATERIALIZED VIEW</span> <span class="n">todo_stats</span> <span class="k">AS</span>
+<span class="k">SELECT</span>
+  <span class="n">status</span>,
+  <span class="fn">COUNT</span>(<span class="o">*</span>)                                  <span class="k">AS</span> <span class="n">total</span>,
+  <span class="fn">COUNT</span>(<span class="o">*</span>) <span class="k">FILTER</span> (<span class="k">WHERE</span> <span class="n">due_date</span> <span class="o">&lt;</span> <span class="fn">NOW</span>()) <span class="k">AS</span> <span class="n">overdue</span>,
+  <span class="fn">COUNT</span>(<span class="o">*</span>) <span class="k">FILTER</span> (<span class="k">WHERE</span> <span class="n">status</span> <span class="o">=</span> <span class="s">'done'</span>)  <span class="k">AS</span> <span class="n">done</span>
+<span class="k">FROM</span> <span class="n">todos_todo</span>
+<span class="k">GROUP BY</span> <span class="n">status</span>;
+
+<span class="k">CREATE UNIQUE INDEX</span> <span class="k">ON</span> <span class="n">todo_stats</span>(<span class="n">status</span>);
+
+<span class="c">-- refresh after every write, non-blocking for readers</span>
+<span class="k">CREATE OR REPLACE FUNCTION</span> <span class="fn">refresh_todo_stats</span>() <span class="k">RETURNS</span> <span class="k">trigger</span> <span class="k">AS</span> $$
+<span class="k">BEGIN</span>
+  <span class="pg">REFRESH MATERIALIZED VIEW CONCURRENTLY</span> <span class="n">todo_stats</span>;
+  <span class="k">RETURN NULL</span>;
+<span class="k">END</span>; $$ <span class="k">LANGUAGE</span> plpgsql;
+</pre>
+      </div>
+    </div>
+
+    <!-- FEATURE 4: SKIP LOCKED queue -->
+    <div class="feature reverse" id="queue">
+      <div class="feature-copy">
+        <div class="feature-meta">
+          <span class="pg-tag">select for update · skip locked</span>
+          <span class="replaces-tag">replaces <s>sqs + celery</s></span>
+        </div>
+        <h3>A concurrent job queue that fits in one SELECT.</h3>
+        <p>
+          When a todo is created, a trigger inserts a row into <code>todos_job</code>. A
+          plain Python worker pulls jobs with <code>SELECT … FOR UPDATE SKIP LOCKED</code> —
+          atomic, no double-processing — runs the work, and updates the row. Spin up three
+          workers with <code>docker compose up --scale worker=3</code> and they cooperate
+          out of the box. The same pattern powers <code>Oban</code> and <code>Que</code>
+          in production.
+        </p>
+        <ul>
+          <li>One <code>SELECT</code> claims a job and locks it for the txn — no race</li>
+          <li>Failed jobs flip to <code>status='failed'</code> for a retry sweep</li>
+          <li><code>pg_notify('job_queue', …)</code> lets workers wake instantly instead of polling</li>
+          <li>Adds load to the primary; great until you're at queue-as-a-service scale</li>
+        </ul>
+      </div>
+      <div class="code">
+        <div class="code-head">
+          <span>todos/worker.py</span>
+          <span class="lang">PY</span>
+        </div>
+<pre><span class="k">def</span> <span class="fn">process_jobs</span>():
+    <span class="n">conn</span> <span class="o">=</span> <span class="n">psycopg2</span>.<span class="fn">connect</span>(<span class="n">DATABASE_URL</span>)
+    <span class="k">while</span> <span class="k">True</span>:
+        <span class="k">with</span> <span class="n">conn</span>.<span class="fn">cursor</span>() <span class="k">as</span> <span class="n">cur</span>:
+            <span class="n">cur</span>.<span class="fn">execute</span>(<span class="s">"""
+                SELECT id, todo_id, job_type, payload
+                FROM   todos_job
+                WHERE  status = 'queued'
+                ORDER  BY created_at
+                LIMIT  1
+                FOR UPDATE <span class="pg">SKIP LOCKED</span>
+            """</span>)
+            <span class="n">job</span> <span class="o">=</span> <span class="n">cur</span>.<span class="fn">fetchone</span>()
+            <span class="k">if</span> <span class="n">job</span>:
+                <span class="k">try</span>:
+                    <span class="fn">handle_job</span>(<span class="n">job</span>)
+                    <span class="n">cur</span>.<span class="fn">execute</span>(<span class="s">"UPDATE todos_job SET status='done', "</span>
+                                <span class="s">"processed_at=NOW() WHERE id=%s"</span>, [<span class="n">job</span>[<span class="s">0</span>]])
+                <span class="k">except</span> <span class="n">Exception</span>:
+                    <span class="n">cur</span>.<span class="fn">execute</span>(<span class="s">"UPDATE todos_job SET status='failed' "</span>
+                                <span class="s">"WHERE id=%s"</span>, [<span class="n">job</span>[<span class="s">0</span>]])
+                <span class="n">conn</span>.<span class="fn">commit</span>()
+        <span class="n">time</span>.<span class="fn">sleep</span>(<span class="s">0.5</span>)
+</pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TRY THE DEMO ============ -->
+  <section class="section" id="demo" data-screen-label="Demo">
+    <div class="section-head">
+      <div class="left">
+        <div class="section-kicker"><span class="num">03</span> · TRY IT LOCALLY</div>
+        <h2 class="section-title">Four flows. One <em>docker compose up.</em></h2>
+      </div>
+      <div class="section-sub">≈ 60 seconds to first todo</div>
+    </div>
+
+    <div class="quickstart" style="margin-bottom:34px;">
+      <div class="copy">
+        <h3>Spin it up</h3>
+        <p>The only prerequisites are Docker and Docker Compose. Clone, copy the env file, and bring the stack up. The image installs Django, Channels and Daphne and runs migrations on first boot.</p>
+        <ul class="req-list">
+          <li><span class="ok">✓</span> Docker 24+ &nbsp;·&nbsp; Compose v2</li>
+          <li><span class="ok">✓</span> ~250 MB disk &nbsp;·&nbsp; ports 8000 + 5432</li>
+          <li><span class="ok">✓</span> Postgres 16 image bundled — bring nothing else</li>
+        </ul>
+      </div>
+      <div class="code">
+        <div class="code-head">
+          <span>~ &nbsp; pgstack &nbsp;·&nbsp; quickstart</span>
+          <span class="lang">SH</span>
+        </div>
+<pre><span class="c"># 1. clone</span>
+<span class="n">$</span> git clone https://github.com/yourname/pgstack.git
+<span class="n">$</span> <span class="k">cd</span> pgstack
+
+<span class="c"># 2. env</span>
+<span class="n">$</span> cp .env.example .env
+
+<span class="c"># 3. up</span>
+<span class="n">$</span> docker compose up --build
+
+<span class="c"># … web_1     | Daphne running on 0.0.0.0:8000</span>
+<span class="c"># … worker_1  | claimed job=42  (SKIP LOCKED)</span>
+<span class="c"># … pg_1      | LISTEN todo_updates  →  ok</span>
+
+<span class="n">$</span> open <span class="s">http://localhost:8000</span>
+</pre>
+      </div>
+    </div>
+
+    <div class="demo-grid">
+      <div class="demo-card">
+        <span class="step">01</span>
+        <span class="route">GET&nbsp;&nbsp;/</span>
+        <h4>Open two tabs. Write in one. Watch the other.</h4>
+        <p>Creating a todo fires <code>pg_notify</code> from a write trigger; the other tab's WebSocket prepends the row instantly. No reload, no Redis.</p>
+        <div class="tag"><b>LISTEN&nbsp;/&nbsp;NOTIFY</b> — phase 3</div>
+      </div>
+
+      <div class="demo-card">
+        <span class="step">02</span>
+        <span class="route">GET&nbsp;&nbsp;/search/?q=…</span>
+        <h4>Search any word in a title or note.</h4>
+        <p>Results come back ranked by <code>ts_rank</code> with matching terms wrapped by <code>ts_headline</code> — ready for the template to highlight.</p>
+        <div class="tag"><b>tsvector + GIN</b> — phase 2</div>
+      </div>
+
+      <div class="demo-card">
+        <span class="step">03</span>
+        <span class="route">GET&nbsp;&nbsp;/dashboard/</span>
+        <h4>Live counts, zero cache warming.</h4>
+        <p>The dashboard reads a materialized view that refreshes after every write. No TTL, no invalidation, no <code>cache.set</code> anywhere in the codebase.</p>
+        <div class="tag"><b>MATERIALIZED VIEW</b> — phase 4</div>
+      </div>
+
+      <div class="demo-card">
+        <span class="step">04</span>
+        <span class="route">GET&nbsp;&nbsp;/queue/</span>
+        <h4>Watch jobs flow through three workers.</h4>
+        <p>Scale with <code>docker compose up --scale worker=3</code> and confirm no job runs twice. Status flips <code>queued → processing → done</code> on screen.</p>
+        <div class="tag"><b>SKIP LOCKED</b> — phase 5</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LIMITS ============ -->
+  <section class="section" id="limits" data-screen-label="Limits">
+    <div class="section-head">
+      <div class="left">
+        <div class="section-kicker"><span class="num">04</span> · HONEST ABOUT THE LIMITS</div>
+        <h2 class="section-title">A learning project, not a production <em>architecture recommendation.</em></h2>
+      </div>
+      <div class="section-sub">read before shipping</div>
+    </div>
+
+    <div class="limits-banner">
+      <span class="tag">heads-up</span>
+      <p>Every pattern here has real limits at scale that the dedicated tools are designed to solve. For side projects, internal tools, and early-stage products these patterns can meaningfully cut infra. For high scale, use the right tool for the job.</p>
+    </div>
+
+    <div class="limits-grid">
+      <div class="limit">
+        <div class="top">
+          <h5>Full-text search</h5>
+          <span class="verdict good">good enough · most apps</span>
+        </div>
+        <p>Postgres FTS is genuinely strong for moderate volumes and simple ranking. It won't match Elasticsearch on faceted search, custom tokenisers, or distributed indexing across hundreds of millions of documents.</p>
+      </div>
+
+      <div class="limit">
+        <div class="top">
+          <h5>LISTEN / NOTIFY</h5>
+          <span class="verdict warn">single-node · no persistence</span>
+        </div>
+        <p>Works well at low-to-moderate event rates on one DB node. No fan-out across replicas, no message persistence — an offline consumer misses the notification. For guaranteed delivery, reach for a real broker.</p>
+      </div>
+
+      <div class="limit">
+        <div class="top">
+          <h5>Materialized views as cache</h5>
+          <span class="verdict warn">recompute cost · low-write</span>
+        </div>
+        <p><code>REFRESH … CONCURRENTLY</code> is non-blocking but still a full recompute on every refresh. For dashboards with heavy aggregations and high write volume, the trigger cost adds up. Redis gives O(1) writes with explicit TTLs.</p>
+      </div>
+
+      <div class="limit">
+        <div class="top">
+          <h5>SKIP LOCKED queue</h5>
+          <span class="verdict good">production-proven · in scope</span>
+        </div>
+        <p>Solid pattern used by Oban (Elixir) and Que (Ruby) in production. Caveat is shared load on your primary — at very high throughput you'll want a dedicated queue that doesn't compete with transactional traffic.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ TECH STACK ============ -->
+  <section class="section" id="stack" data-screen-label="Stack">
+    <div class="section-head">
+      <div class="left">
+        <div class="section-kicker"><span class="num">05</span> · TECH STACK</div>
+        <h2 class="section-title">Five tools. <em>That's the whole list.</em></h2>
+      </div>
+      <div class="section-sub">no broker · no cache · no search service</div>
+    </div>
+
+    <div class="stack-strip">
+      <div class="stack-card pg">
+        <div class="name">postgres <span class="v">16</span></div>
+        <div class="role">doing everything — storage, search, pub/sub, cache, queue</div>
+      </div>
+      <div class="stack-card">
+        <div class="name">django <span class="v">5</span></div>
+        <div class="role">MVT web framework, server-rendered templates</div>
+      </div>
+      <div class="stack-card">
+        <div class="name">channels <span class="v">4</span></div>
+        <div class="role">ASGI + WebSocket consumers for live updates</div>
+      </div>
+      <div class="stack-card">
+        <div class="name">daphne <span class="v">4</span></div>
+        <div class="role">ASGI server, holds the long-lived LISTEN connections</div>
+      </div>
+      <div class="stack-card">
+        <div class="name">docker <span class="v">+ compose</span></div>
+        <div class="role">one command brings the entire stack up locally</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="left">
+      <span class="pg"><span class="pgdot"></span>powered by postgres</span>
+      <span>·</span>
+      <span>MIT licensed</span>
+      <span>·</span>
+      <span>v0.1.0 — May 2026</span>
+    </div>
+    <div class="right">
+      <a href="#status">All systems · 99.99%</a>
+      <a href="#github">github / pgstack</a>
+    </div>
+  </footer>
+</div>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+  // tabs
+  const tabs = document.querySelectorAll('.tabs button');
+  const title = document.querySelector('.auth-title');
+  const sub = document.querySelector('.auth-sub');
+  function switchTab(name) {
+    tabs.forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+    if (name === 'signup') {
+      title.textContent = 'Create your pgstack role';
+      sub.innerHTML = 'New <code>postgres</code> role. Free for local dev — bring your own DB.';
+      document.querySelector('.submit span').textContent = '\\createrole  →';
+    } else {
+      title.textContent = 'Connect to pgstack';
+      sub.innerHTML = 'Sign in to open the demo at <code>localhost:8000</code> — todos, search, dashboard, queue.';
+      document.querySelector('.submit span').textContent = '\\connect  →';
+    }
+  }
+  tabs.forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+
+  // password peek
+  function togglePw() {
+    const pw = document.getElementById('pw');
+    const eye = document.getElementById('eye');
+    const shown = pw.type === 'text';
+    pw.type = shown ? 'password' : 'text';
+    eye.textContent = shown ? 'SHOW' : 'HIDE';
+  }
+
+  function doSubmit() {
+    const btn = document.querySelector('.submit span');
+    const original = btn.textContent;
+    btn.textContent = 'connecting…';
+    setTimeout(() => { btn.textContent = original; }, 1200);
+  }
+</script>
+</body>
+</html>
