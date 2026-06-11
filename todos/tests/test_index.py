@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from todos.models import Job, JobStatus, Todo, TodoStatus
 
@@ -44,6 +47,41 @@ class IndexViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'Private row')
 
+    def test_anonymous_index_hides_create_form(self) -> None:
+        response = self.client.get('/')
+        self.assertNotContains(response, 'New todo')
+        self.assertNotContains(response, 'name="title"')
+
+    def test_anonymous_index_excludes_websocket_client(self) -> None:
+        response = self.client.get('/')
+        self.assertNotContains(response, 'new WebSocket(')
+        self.assertNotContains(response, '/ws/todos/')
+
+    def test_root_orders_todos_newest_first(self) -> None:
+        now = timezone.now()
+        older = Todo.objects.create(
+            title='Older row',
+            notes='',
+            status=TodoStatus.PENDING,
+            owner=self.owner,
+        )
+        Todo.objects.filter(pk=older.pk).update(
+            created_at=now - timedelta(hours=1),
+        )
+        Todo.objects.create(
+            title='Newer row',
+            notes='',
+            status=TodoStatus.PENDING,
+            owner=self.owner,
+        )
+        self.client.login(
+            username='todolist_owner',
+            password='testpass123!',
+        )
+        response = self.client.get('/')
+        content = response.content.decode()
+        self.assertLess(content.index('Newer row'), content.index('Older row'))
+
     def test_root_shows_only_own_todos_when_logged_in(self) -> None:
         other = get_user_model().objects.create_user(
             username='neighbor',
@@ -81,6 +119,19 @@ class IndexViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "new WebSocket(")
         self.assertContains(response, '/ws/todos/')
+        self.assertContains(response, 'id="viewer-pk"')
+        self.assertContains(response, "getElementById('viewer-pk')")
+        self.assertContains(response, 'payloadOwnedByViewer')
+
+    def test_authenticated_index_shows_create_form(self) -> None:
+        self.client.login(
+            username='todolist_owner',
+            password='testpass123!',
+        )
+        response = self.client.get('/')
+        self.assertContains(response, 'New todo')
+        self.assertContains(response, 'name="title"')
+        self.assertContains(response, 'name="notes"')
 
     def test_authenticated_post_creates_owned_todo(self) -> None:
         self.client.login(

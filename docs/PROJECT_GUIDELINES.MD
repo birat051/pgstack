@@ -1,6 +1,8 @@
 # pgstack — Best Practices
 
 > Show, don't tell. Every rule below has a concrete example.
+>
+> **Architecture map:** see [`ARCHITECTURE.MD`](ARCHITECTURE.MD) for routes, views, services, Postgres feature paths, and Docker wiring.
 
 ---
 

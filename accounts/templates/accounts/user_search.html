@@ -1,20 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Find users — pgstack</title>
-</head>
-<body>
-    <nav>
-        <a href="{% url 'index' %}">Todos</a>
-        ·
-        <a href="{% url 'search' %}">Search todos</a>
-        ·
-        <a href="{% url 'dashboard' %}">Dashboard</a>
-        ·
-        <a href="{% url 'settings' %}">Settings</a>
-    </nav>
+{% extends "todos/base.html" %}
 
+{% block title %}Find users — pgstack{% endblock %}
+
+{% block content %}
     <main>
         <h1>Find users</h1>
         <p>Search by username to open a user's public Todo list.</p>
@@ -39,5 +27,4 @@
             {% endif %}
         {% endif %}
     </main>
-</body>
-</html>
+{% endblock %}

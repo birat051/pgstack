@@ -1,18 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Dashboard — pgstack</title>
-</head>
-<body>
-    <nav>
-        <a href="{% url 'index' %}">Todos</a>
-        ·
-        <a href="{% url 'search' %}">Search</a>
-        {% if view_username %}· <span>List: @{{ view_username }}</span>{% endif %}
-        ·
-        <a href="{% url 'queue_monitor' %}">Queue</a>
-    </nav>
+{% extends "todos/base.html" %}
+
+{% block title %}Dashboard — pgstack{% endblock %}
+
+{% block content %}
+    {% if view_username %}<p>List: @{{ view_username }}</p>{% endif %}
     <h1>Todo counts by status</h1>
     <section>
         <article>
@@ -28,5 +19,4 @@
             <p>{{ counts.overdue }}</p>
         </article>
     </section>
-</body>
-</html>
+{% endblock %}

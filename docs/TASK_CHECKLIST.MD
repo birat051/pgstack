@@ -342,20 +342,20 @@ Do this after PR 07 so signup can create `User` rows aligned with Django auth an
 
 ### PR 16 — MVT wiring: base template + nav + index view
 
-- [ ] `base.html`
-  - [ ] Nav: Todos | Search | Users | Dashboard | Queue | Settings
-  - [ ] Show Login/Register/Logout links based on authentication state
-  - [ ] `{% block content %}` placeholder
-  - [ ] All other templates extend `base.html`
-- [ ] Index view + template
-  - [ ] Authenticated users see their own Todos ordered by `created_at` descending
-  - [ ] Inline create form (POST) is visible only to authenticated users
-  - [ ] WebSocket listener script only applies updates visible to the current user
-- [ ] Wire all URLs
-  - [ ] `todos/urls.py`: `/`, `/search/`, `/dashboard/`, `/queue/`
-  - [ ] `accounts/urls.py`: `/settings/`, signup URL (per PR 07a), `/users/search/`, `/users/<username>/todos/`
-  - [ ] Include in `pgstack/urls.py`
-- [ ] Test: full app navigation works end to end in Docker
+- [x] `base.html`
+  - [x] Nav: Todos | Search | Users | Dashboard | Queue | Settings
+  - [x] Show Login/Register/Logout links based on authentication state
+  - [x] `{% block content %}` placeholder
+  - [x] All other templates extend `base.html`
+- [x] Index view + template
+  - [x] Authenticated users see their own Todos ordered by `created_at` descending
+  - [x] Inline create form (POST) is visible only to authenticated users
+  - [x] WebSocket listener script only applies updates visible to the current user
+- [x] Wire all URLs
+  - [x] `todos/urls.py`: `/`, `/search/`, `/dashboard/`, `/queue/`
+  - [x] `accounts/urls.py`: `/settings/`, signup URL (per PR 07a), `/users/search/`, `/users/<username>/todos/`
+  - [x] Include in `pgstack/urls.py`
+- [x] Test: full app navigation works end to end in Docker
 
 ---
 

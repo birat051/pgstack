@@ -1,29 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Todos — pgstack</title>
-</head>
-<body>
+{% extends "todos/base.html" %}
+
+{% block title %}Todos — pgstack{% endblock %}
+
+{% block content %}
     <h1>Todos</h1>
-    <nav>
-        <a href="{% url 'search' %}">Search</a>
-        ·
-        {% if request.user.is_authenticated %}
-            <a href="{% url 'dashboard' %}">Dashboard</a>
-            ·
-            <a href="{% url 'queue_monitor' %}">Queue</a>
-            ·
-            <a href="{% url 'settings' %}">Settings</a>
-            ·
-            <form method="post" action="{% url 'logout' %}" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit">Log out</button>
-            </form>
-        {% else %}
-            <a href="{% url 'login' %}">Log in</a>
-        {% endif %}
-    </nav>
 
     {% if request.user.is_authenticated and todo_form %}
         <section>
@@ -52,13 +32,29 @@
         <p id="todo-empty-msg">No todos yet.</p>
     {% endif %}
     {% if request.user.is_authenticated %}
+        {{ request.user.pk|json_script:"viewer-pk" }}
         <script>
             (function () {
+                var viewerPk = JSON.parse(document.getElementById('viewer-pk').textContent);
+
+                function payloadOwnedByViewer(ownerId) {
+                    if (ownerId === viewerPk) {
+                        return true;
+                    }
+                    if (typeof ownerId === 'string' && ownerId === String(viewerPk)) {
+                        return true;
+                    }
+                    return false;
+                }
+
                 var scheme = window.location.protocol === 'https:' ? 'wss' : 'ws';
                 var ws = new WebSocket(scheme + '://' + window.location.host + '/ws/todos/');
                 ws.onmessage = function (ev) {
                     try {
                         var row = JSON.parse(ev.data);
+                        if (!payloadOwnedByViewer(row.owner_id)) {
+                            return;
+                        }
                         var ul = document.getElementById('todo-list-ul');
                         if (!ul || !row.title) {
                             return;
@@ -86,5 +82,4 @@
             })();
         </script>
     {% endif %}
-</body>
-</html>
+{% endblock %}
