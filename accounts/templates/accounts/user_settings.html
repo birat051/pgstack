@@ -1,10 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Settings — pgstack</title>
-</head>
-<body>
+{% extends "todos/base.html" %}
+
+{% block title %}Settings — pgstack{% endblock %}
+
+{% block content %}
     <main>
         <h1>Todo list visibility</h1>
         {% if messages %}
@@ -23,5 +21,4 @@
             <p><button type="submit">Save</button></p>
         </form>
     </main>
-</body>
-</html>
+{% endblock %}

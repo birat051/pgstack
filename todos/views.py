@@ -7,6 +7,8 @@ from django.views import View
 
 from accounts import services as accounts_services
 from todos import forms, services
+
+
 class IndexView(View):
     """List recent todos on GET; create on POST when authenticated."""
 

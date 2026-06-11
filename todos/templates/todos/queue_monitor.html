@@ -1,8 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Job queue — pgstack</title>
+{% extends "todos/base.html" %}
+
+{% block title %}Job queue — pgstack{% endblock %}
+
+{% block extra_head %}
     <style>
         .badge {
             display: inline-block;
@@ -16,15 +16,9 @@
         .badge-done { background: #16a34a; color: #fff; }
         .badge-failed { background: #dc2626; color: #fff; }
     </style>
-</head>
-<body>
-    <nav>
-        <a href="{% url 'index' %}">Todos</a>
-        ·
-        <a href="{% url 'search' %}">Search</a>
-        ·
-        <a href="{% url 'dashboard' %}">Dashboard</a>
-    </nav>
+{% endblock %}
+
+{% block content %}
     <h1>Jobs for your Todos</h1>
     {% if jobs %}
         <table border="1" cellpadding="6">
@@ -54,5 +48,4 @@
     {% else %}
         <p>No jobs found for your Todos.</p>
     {% endif %}
-</body>
-</html>
+{% endblock %}

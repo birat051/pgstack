@@ -1,10 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Sign up — pgstack</title>
-</head>
-<body>
+{% extends "todos/base.html" %}
+
+{% block title %}Sign up — pgstack{% endblock %}
+
+{% block content %}
     <main>
         <h1>Create an account</h1>
 
@@ -42,7 +40,5 @@
         </form>
 
         <p>Already have an account? <a href="{% url 'login' %}">Log in</a> — use your email as your username.</p>
-        <p><a href="{% url 'index' %}">Back to todos</a></p>
     </main>
-</body>
-</html>
+{% endblock %}

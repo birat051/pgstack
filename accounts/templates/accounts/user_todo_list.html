@@ -1,22 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>{% if is_own_list %}Your todos{% else %}{{ owner.username }}&rsquo;s todos{% endif %} — pgstack</title>
-</head>
-<body>
-    <nav>
-        <a href="{% url 'index' %}">Todos</a>
-        ·
-        <a href="{% url 'user_search' %}">Find users</a>
-        ·
-        <a href="{% url 'search' %}">Search todos</a>
-        ·
-        <a href="{% url 'dashboard' %}">Dashboard</a>
-        ·
-        <a href="{% url 'settings' %}">Settings</a>
-    </nav>
+{% extends "todos/base.html" %}
 
+{% block title %}{% if is_own_list %}Your todos{% else %}{{ owner.username }}&rsquo;s todos{% endif %} — pgstack{% endblock %}
+
+{% block content %}
     <main>
         {% if is_own_list %}
             <h1>Your todos</h1>
@@ -56,5 +42,4 @@
             {% endif %}
         {% endif %}
     </main>
-</body>
-</html>
+{% endblock %}
